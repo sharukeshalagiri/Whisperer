@@ -55,7 +55,6 @@ export const pollDeviceAuthorization = <ThrowOnError extends boolean = false>(op
  *
  * Args:
  * device_code: Desktop transaction UUID.
- * session: Injected API database transaction.
  * verifier: Raw desktop-only verifier in a request header.
  *
  * Returns:

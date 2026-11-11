@@ -3248,7 +3248,7 @@
     },
     "/device/stream": {
       "get": {
-        "description": "Stream a protected device completion event using the desktop verifier.\n\nArgs:\n    device_code: Desktop transaction UUID.\n    session: Injected API database transaction.\n    verifier: Raw desktop-only verifier in a request header.\n\nReturns:\n    Server-sent completion event with application tokens only after redemption.",
+        "description": "Stream a protected device completion event using the desktop verifier.\n\nArgs:\n    device_code: Desktop transaction UUID.\n    verifier: Raw desktop-only verifier in a request header.\n\nReturns:\n    Server-sent completion event with application tokens only after redemption.",
         "operationId": "streamDeviceAuthorization",
         "parameters": [
           {

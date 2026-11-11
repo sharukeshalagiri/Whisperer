@@ -13,7 +13,7 @@ from fastapi.testclient import TestClient
 from joserfc import jwt
 from joserfc.jwk import OctKey
 from whisperer_api.auth import sign_in_code
-from whisperer_api.main import create_app
+from whisperer_api.main import create_app, redeem_in_transaction
 from whisperer_api.persistence import DeviceAuthorization, User
 from whisperer_api.resources import ResourceService
 from whisperer_api.settings import Settings
@@ -530,3 +530,31 @@ def test_replaying_a_rotated_refresh_token_revokes_the_whole_session(tmp_path: P
             == 401
         )
         assert client.get("/v1/notes", headers=headers).status_code == 401
+
+
+def test_stream_polls_redeem_in_short_transactions(tmp_path: Path) -> None:
+    """Each stream poll uses its own short transaction and returns its connection at once."""
+    client, dependencies, device_code, verifier = _phishing_setup(tmp_path)
+    pool = dependencies.database._engine.pool
+    with client:
+        client.get(
+            "/login",
+            params={"device_code": device_code, "verifier_challenge": _challenge(verifier)},
+            follow_redirects=False,
+        )
+    # Redeem with the app stopped, so its background worker holds no connection either.
+    pending = redeem_in_transaction(dependencies, device_code, verifier)
+    assert pending is not None
+    assert pending.status == "pending"
+    assert pool.checkedout() == 0
+    with client:
+        with next(dependencies.database.session()) as session:
+            state = session.get_one(DeviceAuthorization, device_code).state
+        page = client.get("/auth/callback", params={"code": "code", "state": state}).text
+        client.post("/auth/approve", data={"approval": _approval_token(page)})
+    complete = redeem_in_transaction(dependencies, device_code, verifier)
+    assert complete is not None
+    assert complete.status == "complete"
+    assert pool.checkedout() == 0
+    # The one-time consumption was committed: a second redemption gets nothing.
+    assert redeem_in_transaction(dependencies, device_code, verifier) is None

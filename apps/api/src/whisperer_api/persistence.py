@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
+from contextlib import contextmanager
 from datetime import UTC, datetime
 from importlib import import_module
 from typing import Protocol
@@ -434,6 +435,19 @@ class Database:
         with self._engine.connect().execution_options(isolation_level="AUTOCOMMIT") as connection:
             connection.exec_driver_sql("VACUUM")
             connection.exec_driver_sql("PRAGMA wal_checkpoint(TRUNCATE)")
+
+    @contextmanager
+    def transaction(self) -> Iterator[Session]:
+        """Open a session whose transaction commits on success and rolls back on error.
+
+        Args:
+            None.
+
+        Yields:
+            A session, closed when the block ends.
+        """
+        with self._sessions() as session, session.begin():
+            yield session
 
     def session(self) -> Iterator[Session]:
         """Yield one transaction-aware database session.

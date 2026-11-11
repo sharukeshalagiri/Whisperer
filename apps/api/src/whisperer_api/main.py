@@ -439,6 +439,23 @@ def _completion_page(device_code: str) -> Response:
     )
 
 
+def redeem_in_transaction(
+    dependencies: ApplicationDependencies, device_code: str, verifier: str
+) -> DevicePollResponse | None:
+    """Redeem a device authorization in its own short, committed transaction.
+
+    Args:
+        dependencies: Composed application collaborators.
+        device_code: Desktop transaction id.
+        verifier: Raw desktop verifier.
+
+    Returns:
+        Pending or complete state, or None for an invalid or expired attempt.
+    """
+    with dependencies.database.transaction() as session:
+        return dependencies.devices.redeem(session, device_code, verifier)
+
+
 def create_app(
     settings: Settings | None = None,
     *,
@@ -711,14 +728,12 @@ def create_app(
     @app.get("/device/stream", operation_id="streamDeviceAuthorization")
     async def stream_device(
         device_code: UUID,
-        session: session_dependency,
         verifier: Annotated[str | None, Header(alias="X-Whisperer-Device-Verifier")] = None,
     ) -> EventSourceResponse:
         """Stream a protected device completion event using the desktop verifier.
 
         Args:
             device_code: Desktop transaction UUID.
-            session: Injected API database transaction.
             verifier: Raw desktop-only verifier in a request header.
 
         Returns:
@@ -738,7 +753,11 @@ def create_app(
                 SSE event dictionaries with pending keepalives or one completion.
             """
             while True:
-                result = dependencies.devices.redeem(session, str(device_code), verifier)
+                # A short transaction per poll: a stream lasts up to the authorization lifetime
+                # and must not hold a pooled connection, or open streams starve every request.
+                result = await asyncio.to_thread(
+                    redeem_in_transaction, dependencies, str(device_code), verifier
+                )
                 if result is None:
                     yield {"event": "error", "data": "authorization expired"}
                     return
@@ -746,7 +765,6 @@ def create_app(
                     yield {"event": "complete", "data": result.model_dump_json(by_alias=True)}
                     return
                 yield {"event": "pending", "data": result.model_dump_json(by_alias=True)}
-                session.expire_all()
                 await asyncio.sleep(0.5)
 
         return EventSourceResponse(events())
