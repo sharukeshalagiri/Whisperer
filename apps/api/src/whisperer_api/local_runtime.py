@@ -24,6 +24,7 @@ from typing import IO, TYPE_CHECKING
 
 import httpx
 
+from whisperer_api.http_clients import LOOPBACK_DIRECT
 from whisperer_api.inference import (
     HttpLlmProvider,
     HttpSpeechProvider,
@@ -208,7 +209,9 @@ class LocalProfile:
         Returns:
             Client that never follows redirects except where a caller asks.
         """
-        return httpx.AsyncClient(follow_redirects=False, transport=self.transport)
+        return httpx.AsyncClient(
+            follow_redirects=False, transport=self.transport, mounts=LOOPBACK_DIRECT
+        )
 
     def authenticator(self, clock: Clock) -> LocalAuthenticator:
         """Build the boot-token authenticator.

@@ -33,6 +33,7 @@ from sse_starlette.sse import EventSourceResponse
 
 from whisperer_api.audio import AudioDecodeError
 from whisperer_api.auth import DeviceAuthorizationService, OidcClient, SessionService, SystemClock
+from whisperer_api.http_clients import LOOPBACK_DIRECT
 from whisperer_api.inference import (
     LLM_OFF_MESSAGE,
     ContextLimitError,
@@ -212,7 +213,9 @@ class ApplicationDependencies:
         self.database = Database(settings.database_url)
         self.clock = SystemClock()
         self.http_client = (
-            local.http_client() if local else httpx.AsyncClient(follow_redirects=False)
+            local.http_client()
+            if local
+            else httpx.AsyncClient(follow_redirects=False, mounts=LOOPBACK_DIRECT)
         )
         self.sessions = SessionService(settings, self.clock)
         self.devices = DeviceAuthorizationService(settings, self.clock, self.sessions)
@@ -224,7 +227,9 @@ class ApplicationDependencies:
             local.authenticator(self.clock) if local else None
         )
         # Pydantic AI speaks httpx2, so meeting AI calls own a separate client.
-        self.ai_http_client = ai_http_client or httpx2.AsyncClient(follow_redirects=False)
+        self.ai_http_client = ai_http_client or httpx2.AsyncClient(
+            follow_redirects=False, mounts=LOOPBACK_DIRECT
+        )
         self.meeting_ai = meeting_ai_service(self.gateway, self.ai_http_client)
         self.resources = ResourceService(self.clock, self.gateway)
         self.metrics = MetricsService()
