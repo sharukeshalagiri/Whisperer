@@ -29,11 +29,13 @@ describe('resolveLocalAsset', () => {
     const outside = mkdtempSync(join(tmpdir(), 'whisperer-outside-'));
     temporaryDirectories.push(outside);
     writeFileSync(join(outside, 'secret.js'), 'secret');
-    symlinkSync(join(outside, 'secret.js'), join(root, 'escape.js'));
+    // A directory link escapes the same way as a file link, and Windows creates junctions without
+    // the symlink privilege, so this runs on every developer machine.
+    symlinkSync(outside, join(root, 'escape'), 'junction');
 
-    await expect(resolveLocalAsset(root, 'whisperer://remote/escape.js')).resolves.toBeNull();
-    await expect(resolveLocalAsset(root, 'whisperer://local/../escape.js')).resolves.toBeNull();
-    await expect(resolveLocalAsset(root, 'whisperer://local/escape.js')).resolves.toBeNull();
+    await expect(resolveLocalAsset(root, 'whisperer://remote/escape/secret.js')).resolves.toBeNull();
+    await expect(resolveLocalAsset(root, 'whisperer://local/../escape/secret.js')).resolves.toBeNull();
+    await expect(resolveLocalAsset(root, 'whisperer://local/escape/secret.js')).resolves.toBeNull();
   });
 });
 
