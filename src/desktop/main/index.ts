@@ -1167,9 +1167,11 @@ class DesktopMainRuntime {
       // Late sync results and uploads for the erased scope must never write back.
       this.meetingScopeEpoch += 1;
       this.noteIdAliases.clear();
+      // Everything the dialog lists goes: the device scope, any cached account data and every
+      // local recording. Account data still on its server can come back with a sign-in or sync.
+      this.store.eraseAllScopes();
       this.store.setScope(DEVICE_SCOPE);
-      const scopeDirectory = this.store.eraseScope();
-      rmSync(join(this.meetingAudioDirectory, scopeDirectory), { recursive: true, force: true });
+      rmSync(this.meetingAudioDirectory, { recursive: true, force: true });
       this.logger.warn('On-device data was deleted at the user\'s request.');
     } finally {
       this.erasingLocalData = false;
@@ -1347,7 +1349,16 @@ class DesktopMainRuntime {
     this.handle(CHANNELS.account.save, async (input) => this.saveAccount(input));
     this.handle(CHANNELS.account.delete, async () => {
       if (this.deviceMode()) throw new Error('There is no account to delete in on-device mode.');
+      const scopeDirectory = this.store.hasScope() ? this.store.scopeDirectory() : null;
       await this.api.deleteAccount();
+      // The server copy is gone; remove this account's cache and recordings from this computer too.
+      if (scopeDirectory) {
+        this.store.eraseScopeDirectory(scopeDirectory);
+        rmSync(join(this.meetingAudioDirectory, scopeDirectory), { recursive: true, force: true });
+      }
+      this.emit(CHANNELS.events.historyChanged, undefined);
+      this.emit(CHANNELS.events.notesChanged, undefined);
+      this.emit(CHANNELS.events.meetingsChanged, undefined);
       return this.authState();
     });
     this.handle(CHANNELS.dataSync.run, async () => this.runDataSync());

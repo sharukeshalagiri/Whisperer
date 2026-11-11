@@ -915,7 +915,9 @@ export function ConfirmEraseLocalData({ busy, onCancel, onConfirm }: { busy: boo
             <li>Notes and scratchpad drafts</li>
             <li>Meetings, their recordings, transcripts and summaries</li>
             <li>Dictionary entries, snippets and usage stats</li>
+            <li>Cached data and recordings of any Whisperer server account you signed in to here</li>
           </ul>
+          <p>Copies already on a Whisperer server stay there. Changes for that account that have not synced yet are lost.</p>
           <p>Downloaded models, inference choices and your settings stay. Data in a signed-in server account is not affected. This cannot be undone.</p>
         </div>
         <label>

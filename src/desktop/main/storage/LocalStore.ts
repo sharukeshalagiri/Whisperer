@@ -512,6 +512,17 @@ export class LocalStore {
    */
   public eraseScope(): string {
     const scopeHash = this.requireScope();
+    this.eraseScopeDirectory(scopeHash);
+    return scopeHash;
+  }
+
+  /**
+   * Permanently deletes one scope's rows by its directory key, even after it was detached.
+   *
+   * Args:
+   *   scopeHash: A value `scopeDirectory()` returned while that scope was active.
+   */
+  public eraseScopeDirectory(scopeHash: string): void {
     this.database.transaction(() => {
       for (const table of ['outbox', 'meeting_segments', 'meetings', 'notes', 'snippets', 'history']) {
         this.database.prepare(`DELETE FROM ${table} WHERE scope_hash = ?`).run(scopeHash);
@@ -520,7 +531,17 @@ export class LocalStore {
     // Rewrite the file so the deleted text does not linger in free pages or the WAL.
     this.database.exec('VACUUM');
     this.database.pragma('wal_checkpoint(TRUNCATE)');
-    return scopeHash;
+  }
+
+  /** Permanently deletes every row of every scope (account caches included) and compacts the file. */
+  public eraseAllScopes(): void {
+    this.database.transaction(() => {
+      for (const table of ['outbox', 'meeting_segments', 'meetings', 'notes', 'snippets', 'history']) {
+        this.database.prepare(`DELETE FROM ${table}`).run();
+      }
+    })();
+    this.database.exec('VACUUM');
+    this.database.pragma('wal_checkpoint(TRUNCATE)');
   }
 
   /**

@@ -217,6 +217,44 @@ describe('LocalStore', () => {
     expect(() => store.eraseScope()).toThrow('No active local storage scope');
   });
 
+  test('erases a detached scope by its directory key and leaves the others', () => {
+    const store = createTestStore();
+    store.setScope(scopeA);
+    store.saveNote({ content: 'a', id: 'n', pinned: false, summary: '', syncState: 'local', title: 't', updatedAt: 1 });
+    const directoryA = store.scopeDirectory();
+    store.setScope(scopeB);
+    store.saveNote({ content: 'b', id: 'n', pinned: false, summary: '', syncState: 'local', title: 't', updatedAt: 1 });
+    store.setScope(null);
+
+    store.eraseScopeDirectory(directoryA);
+
+    store.setScope(scopeA);
+    expect(store.getStats().noteCount).toBe(0);
+    store.setScope(scopeB);
+    expect(store.getStats().noteCount).toBe(1);
+  });
+
+  test('erases every scope, so cached account data goes too', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'whisperer-local-store-'));
+    const databasePath = join(directory, 'desktop.sqlite');
+    const store = new LocalStore({ databasePath });
+    testStores.push({ directory, store });
+    for (const scope of [scopeA, scopeB]) {
+      store.setScope(scope);
+      store.saveNote({ content: 'CACHED-ACCOUNT-MARKER '.repeat(100), id: 'n', pinned: false, summary: '', syncState: 'local', title: 't', updatedAt: 1 });
+      store.addHistory({ appName: null, createdAt: 100, durationMs: 1, id: 'h', language: 'en', pasted: false, rawText: 'r', text: 't', status: 'complete' });
+    }
+
+    store.eraseAllScopes();
+
+    for (const scope of [scopeA, scopeB]) {
+      store.setScope(scope);
+      expect(store.getStats()).toEqual({ historyCount: 0, meetingCount: 0, noteCount: 0, snippetCount: 0 });
+    }
+    const bytes = readFileSync(databasePath).toString('latin1') + (existsSync(`${databasePath}-wal`) ? readFileSync(`${databasePath}-wal`).toString('latin1') : '');
+    expect(bytes).not.toContain('CACHED-ACCOUNT-MARKER');
+  });
+
   test('leaves no erased text in the database file', () => {
     const directory = mkdtempSync(join(tmpdir(), 'whisperer-local-store-'));
     const databasePath = join(directory, 'desktop.sqlite');
