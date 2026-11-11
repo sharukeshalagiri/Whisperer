@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { appendFileSync, copyFileSync, createReadStream, existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
 import { Readable } from 'node:stream';
+import { release } from 'node:os';
 import { basename, extname, isAbsolute, join, relative } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { promisify } from 'node:util';
@@ -79,6 +80,7 @@ import { freeDiskBytes, RuntimeInstaller, spawnCommand, type RuntimeManifest } f
 import runtimeManifest from './runtime/runtime-manifest.json';
 import { MEETING_SEGMENT_MAX_BYTES, meetingChunkDecision } from './runtime/MeetingCaptureLimits';
 import { finalizeCapture, recoverInterruptedMeetings } from './runtime/MeetingFinalizer';
+import { buildDiagnostics } from './runtime/Diagnostics';
 
 // Native global shortcuts arrive through main rather than a DOM gesture; allow the owned, muted capture graph to resume.
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
@@ -2102,13 +2104,20 @@ class DesktopMainRuntime {
     return { maximized: window.isMaximized() };
   }
 
-  /** Writes a redacted local-only data export to a user-selected location and reveals exactly that location. */
+  /** Writes version facts and the redacted local log to a user-selected location and reveals it. */
   private async exportDiagnostics(): Promise<{ path: string | null }> {
     const options = { defaultPath: 'whisperer-diagnostics.json', title: 'Export diagnostics' };
     const result = this.hub ? await dialog.showSaveDialog(this.hub, options) : await dialog.showSaveDialog(options);
     if (result.canceled || !result.filePath) return { path: null };
-    const data = JSON.stringify({ exportedAt: new Date().toISOString(), localData: this.store.exportData(), version: app.getVersion() }, null, 2);
-    writeFileSync(result.filePath, redact(data), { mode: 0o600 });
+    let log = '';
+    try { log = readFileSync(join(app.getPath('logs'), 'main.log'), 'utf8'); } catch { /* no log yet */ }
+    // Version facts and the local log only: never dictation history, notes, meetings or snippets.
+    const data = buildDiagnostics({
+      exportedAt: new Date().toISOString(), appVersion: app.getVersion(), platform: process.platform, arch: process.arch,
+      osRelease: release(), electron: process.versions.electron ?? '', connectionMode: this.deviceMode() ? 'device' : 'remote',
+      capabilities: await this.capabilities(), log,
+    });
+    writeFileSync(result.filePath, data, { mode: 0o600 });
     shell.showItemInFolder(result.filePath);
     return { path: result.filePath };
   }

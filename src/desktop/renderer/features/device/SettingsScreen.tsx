@@ -241,8 +241,8 @@ export function SettingsScreen({
   async function exportDiagnostics(): Promise<void> {
     setBusy('export')
     try {
-      await window.whisperer.diagnostics.export()
-      setNotice('Diagnostics export opened. Choose a location to save it.')
+      const result = await window.whisperer.diagnostics.export()
+      if (result.path) setNotice('Diagnostics saved. They contain the app log and version details only.')
     } catch (diagnosticError) {
       setError(messageFromError(diagnosticError, 'We could not export diagnostics.'))
     } finally {
@@ -446,7 +446,7 @@ export function SettingsScreen({
               </p>
               <SettingsRow
                 action={busy === 'export' ? 'Preparing…' : 'Export'}
-                detail="Export redacted local diagnostics without account credentials."
+                detail="Save the app log and version details for a bug report. No transcripts, notes or meetings."
                 label="Diagnostics"
                 onAction={() => void exportDiagnostics()}
               />
