@@ -72,6 +72,8 @@ class Settings(BaseSettings):
     # Meeting segments and summaries are background work, so they may wait longer than dictation.
     meeting_gateway_timeout_seconds: float = Field(default=300.0, gt=0, le=1800)
     device_authorization_minutes: int = Field(default=10, ge=1, le=30)
+    # Per-account requests per minute to gateway-backed routes and MCP questions; 0 turns it off.
+    inference_requests_per_minute: int = Field(default=60, ge=0, le=10_000)
     # Remote MCP is opt-in. Enabled with any prerequisite missing stays absent, never anonymous.
     mcp_enabled: bool = False
     # Unset means PUBLIC_URL; the MCP resource is always this base plus MCP_PATH.

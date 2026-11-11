@@ -8,7 +8,12 @@ import pytest
 from fastapi.testclient import TestClient
 from whisperer_api.main import create_app
 from whisperer_api.persistence import User
-from whisperer_api.request_limits import DEFAULT_LIMIT, UPLOAD_LIMIT, body_limit
+from whisperer_api.request_limits import (
+    DEFAULT_LIMIT,
+    UPLOAD_LIMIT,
+    SlidingWindowLimiter,
+    body_limit,
+)
 from whisperer_api.settings import Settings
 
 if TYPE_CHECKING:
@@ -102,3 +107,55 @@ def test_route_limits() -> None:
     assert body_limit("/v1/meetings/abc/segments/def") == UPLOAD_LIMIT
     assert body_limit("/v1/sync") > UPLOAD_LIMIT
     assert body_limit("/v1/notes") == DEFAULT_LIMIT
+
+
+def test_gateway_routes_are_limited_per_account(tmp_path: Path) -> None:
+    """One account cannot run up inference costs; other accounts and other routes are unaffected."""
+    settings = Settings(
+        oidc_issuer_url="https://identity.example.test",
+        oidc_client_id="client",
+        oidc_client_secret="secret",
+        public_url="https://api.example.test",
+        token_secret="0123456789abcdef0123456789abcdef",
+        gateway_base_url="https://gateway.example.test",
+        gateway_api_key="gateway-secret",
+        database_url=f"sqlite:///{tmp_path / 'api.sqlite3'}",
+        inference_requests_per_minute=2,
+    )
+    app = create_app(settings)
+    dependencies = app.state.dependencies
+    with TestClient(app) as client:
+        with next(dependencies.database.session()) as session:
+            tokens = []
+            for subject in ("a", "b"):
+                user = User(
+                    issuer="https://identity.example.test",
+                    subject=subject,
+                    created_at=dependencies.clock.now(),
+                )
+                session.add(user)
+                session.flush()
+                tokens.append(dependencies.sessions.issue(session, user).access_token)
+            session.commit()
+        first, second = ({"Authorization": f"Bearer {token}"} for token in tokens)
+        body = {"kind": "polish", "text": "hi"}
+        for _ in range(2):
+            assert (
+                client.post("/v1/text-transformations", headers=first, json=body).status_code != 429
+            )
+        limited = client.post("/v1/text-transformations", headers=first, json=body)
+        assert limited.status_code == 429
+        assert int(limited.headers["retry-after"]) >= 1
+        assert client.post("/v1/text-transformations", headers=second, json=body).status_code != 429
+        note = {"title": "t", "content": "c"}
+        assert client.post("/v1/notes", headers=first, json=note).status_code == 201
+
+
+def test_sliding_window_frees_slots_after_a_minute() -> None:
+    """Old events leave the window."""
+    now = [0.0]
+    limiter = SlidingWindowLimiter(1, clock=lambda: now[0])
+    assert limiter.retry_after("u") == 0
+    assert limiter.retry_after("u") == 60
+    now[0] = 60.5
+    assert limiter.retry_after("u") == 0

@@ -41,6 +41,7 @@ if TYPE_CHECKING:
     from starlette.types import Lifespan
 
     from whisperer_api.main import ApplicationDependencies
+    from whisperer_api.request_limits import SlidingWindowLimiter
 
 AUTHENTICATION_REQUIRED_MESSAGE = "Authentication is required."
 SERVER_INSTRUCTIONS = (
@@ -63,15 +64,22 @@ class McpToolset:
         meetings: Owner-scoped meeting operations.
     """
 
-    def __init__(self, authenticator: McpAuthenticator, meetings: McpMeetingService) -> None:
+    def __init__(
+        self,
+        authenticator: McpAuthenticator,
+        meetings: McpMeetingService,
+        limiter: SlidingWindowLimiter | None = None,
+    ) -> None:
         """Store injected collaborators.
 
         Args:
             authenticator: Maps a verified access token to an existing owner.
             meetings: Owner-scoped meeting operations.
+            limiter: Per-account limit on questions, shared with the HTTP routes.
         """
         self._authenticator = authenticator
         self._meetings = meetings
+        self._limiter = limiter
 
     def register(self, server: FastMCP) -> None:
         """Register exactly the three read-only meeting tools.
@@ -224,6 +232,8 @@ class McpToolset:
             ToolError: If authentication, scope, arguments, the meeting or inference fail.
         """
         principal = await self._principal()
+        if self._limiter is not None and self._limiter.retry_after(principal.user_id):
+            raise ToolError("Too many questions. Try again in a minute.")
         return await self._safely(
             self._meetings.ask_meeting(
                 principal, meeting_id, question, transcript_revision, summary_revision
@@ -304,7 +314,7 @@ def create_mcp_server(dependencies: ApplicationDependencies, auth: AuthProvider)
         auth=auth,
         mask_error_details=True,
     )
-    McpToolset(authenticator, meetings).register(server)
+    McpToolset(authenticator, meetings, dependencies.inference_limiter).register(server)
     return server
 
 

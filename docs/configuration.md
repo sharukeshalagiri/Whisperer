@@ -36,6 +36,7 @@ Keep secrets out of Compose files, image layers, source and desktop clients. A l
 | `GATEWAY_TIMEOUT_SECONDS` | `10` | No | Timeout for interactive dictation, note summary and text transformation requests, from above 0 through 30 seconds. |
 | `MEETING_GATEWAY_TIMEOUT_SECONDS` | `300` | No | Timeout for one background meeting segment transcription or summary request, from above 0 through 1800 seconds. |
 | `DEVICE_AUTHORIZATION_MINUTES` | `10` | No | Device authorization lifetime, from 1 through 30 minutes. |
+| `INFERENCE_REQUESTS_PER_MINUTE` | `60` | No | Per-account requests per minute to transcription, language-model and MCP question routes; more get 429 with `Retry-After`. Abuse protection so one account cannot run up inference costs. It is the same for every account and `0` turns it off. |
 | `MCP_ENABLED` | `false` | No | Turns on the remote MCP endpoint at `/mcp`. While enabled, any missing MCP prerequisite keeps the endpoint absent. It is never served anonymously, and the on-device server never offers it. |
 | `MCP_PUBLIC_URL` | `PUBLIC_URL` | Only for MCP | HTTPS public base for MCP. The protected resource and token audience is this base followed by `/mcp`. |
 | `MCP_OIDC_CLIENT_ID` | none | Only for MCP | Client identifier of a separate OIDC registration for MCP. Never reuse `OIDC_CLIENT_ID`. Its callback is `<MCP_PUBLIC_URL>/mcp/oauth/callback`. |

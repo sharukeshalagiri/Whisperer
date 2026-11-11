@@ -84,7 +84,7 @@ from whisperer_api.metrics_schemas import (
 )
 from whisperer_api.persistence import Database, DeviceAuthorization, Note, RefreshSession, User
 from whisperer_api.preflight import PreflightResult, PreflightService
-from whisperer_api.request_limits import RequestLimitMiddleware
+from whisperer_api.request_limits import RequestLimitMiddleware, SlidingWindowLimiter
 from whisperer_api.resources import (
     DuplicateDictionaryError,
     NoteChangedError,
@@ -234,6 +234,12 @@ class ApplicationDependencies:
             local.authenticator(self.clock) if local else None
         )
         # Pydantic AI speaks httpx2, so meeting AI calls own a separate client.
+        # Abuse protection for paid inference on shared servers; the device has one user.
+        self.inference_limiter = (
+            SlidingWindowLimiter(settings.inference_requests_per_minute)
+            if local is None and settings.inference_requests_per_minute > 0
+            else None
+        )
         self.ai_http_client = ai_http_client or httpx2.AsyncClient(
             follow_redirects=False, mounts=LOOPBACK_DIRECT
         )
@@ -517,9 +523,12 @@ def create_app(
     local_auth = dependencies.local_auth
     app.add_middleware(
         RequestLimitMiddleware,
-        bearer_plausible=local_auth.bearer_matches
-        if local_auth is not None
-        else dependencies.sessions.access_token_plausible,
+        bearer_subject=(
+            (lambda token: "device" if local_auth.bearer_matches(token) else None)
+            if local_auth is not None
+            else dependencies.sessions.access_token_subject
+        ),
+        limiter=dependencies.inference_limiter,
     )
 
     @app.exception_handler(HTTPException)

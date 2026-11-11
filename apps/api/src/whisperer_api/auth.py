@@ -354,24 +354,28 @@ class SessionService:
         if stored is not None:
             stored.revoked_at = self._clock.now()
 
-    def access_token_plausible(self, token: str) -> bool:
+    def access_token_subject(self, token: str) -> str | None:
         """Check an access token's signature, type and expiry without the database.
 
-        Request middleware uses this to refuse anonymous bodies before parsing them; routes
-        still resolve the user and its live session with ``user_from_access_token``.
+        Request middleware uses this to refuse anonymous bodies before parsing them and to key
+        per-account limits; routes still resolve the user and its live session with
+        ``user_from_access_token``.
 
         Args:
             token: JWT received in a Bearer authorization header.
 
         Returns:
-            Whether the token could be a valid access token.
+            The token's account id, or None when it cannot be a valid access token.
         """
         try:
             claims = jwt.decode(token, self._secret_key(), algorithms=["HS256"]).claims
-            JWTClaimsRegistry(exp={"essential": True}, typ={"value": "access"}).validate(claims)
+            JWTClaimsRegistry(
+                exp={"essential": True}, sub={"essential": True}, typ={"value": "access"}
+            ).validate(claims)
         except (JoseError, ValueError, TypeError):
-            return False
-        return True
+            return None
+        subject = claims.get("sub")
+        return subject if isinstance(subject, str) else None
 
     def user_from_access_token(self, session: Session, token: str) -> User | None:
         """Validate a local short-lived access token and resolve its user.
