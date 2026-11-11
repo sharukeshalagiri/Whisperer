@@ -1,0 +1,4 @@
+brotli==1.2.0
+CairoSVG==2.9.0
+fonttools==4.63.0
+Pillow==12.2.0
