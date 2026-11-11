@@ -1,0 +1,1 @@
+"""Whisperer FastAPI application package."""
