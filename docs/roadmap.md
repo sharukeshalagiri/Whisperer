@@ -24,6 +24,7 @@ Linux arm64 is in the dependency lock but has not been installed or run.
 - Wayland has no text insertion; dictation is copied to the clipboard instead. X11 insertion requires `xdotool`.
 - The Fn (Globe) key and mouse buttons cannot be bound as shortcuts. Press-and-hold shortcuts need Accessibility on macOS and are unavailable on Wayland.
 - On Linux the recording pill keeps its hit target active, because Electron cannot forward ignored mouse movement there.
+- Spellchecking is off on Linux, because Chromium would download its dictionaries from Google at startup. Windows and macOS use the system spellchecker.
 - The active application name is not captured on any platform, so the Insights apps card stays empty.
 - Automatic transforms after dictation are not implemented; the controls stay disabled and say so. A transform's replacement is pasted only if the same text is still selected, and View changes shows the before and after.
 - Scratchpad has no version history yet; its history button stays disabled.
@@ -90,7 +91,6 @@ The November 2026 audit's critical, high and medium findings are fixed. These lo
 - **B10** Windows helpers start `powershell.exe` by name rather than by its full System32 path.
 - **B11, B13** Builds are unsigned, the bundled API source is outside ASAR integrity, and the update notice does not verify an installer digest (SHA256SUMS is published with each release).
 - **B12** The permission check handler grants `media` without checking that it is audio; the request handler does require audio only.
-- **D9** Not verified: whether Electron's Linux spellchecker downloads dictionaries despite the renderer network lock.
 - **D10** Deleting on-device data needs the on-device server to be running.
 - **D11** With "sync at startup" on, erased on-device data comes back from the server account, and the erase dialog does not warn about it.
 - **D13** File-system errors in the log include full paths, which contain the OS user name.

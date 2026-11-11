@@ -82,6 +82,7 @@ import runtimeManifest from './runtime/runtime-manifest.json';
 import { MEETING_SEGMENT_MAX_BYTES, meetingChunkDecision } from './runtime/MeetingCaptureLimits';
 import { cancelCaptureRecords, finalizeCapture, recoverInterruptedMeetings } from './runtime/MeetingFinalizer';
 import { buildDiagnostics } from './runtime/Diagnostics';
+import { configureSpellChecker } from './runtime/SpellChecker';
 
 // Native global shortcuts arrive through main rather than a DOM gesture; allow the owned, muted capture graph to resume.
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
@@ -409,6 +410,7 @@ class DesktopMainRuntime {
 
   /** Cancels all renderer-originated requests except local application assets and in-memory media. */
   private lockRendererNetwork(): void {
+    configureSpellChecker(session.defaultSession, process.platform);
     session.defaultSession.webRequest.onBeforeRequest((details, callback) => {
       const allowed = ['whisperer:', 'data:', 'blob:', 'devtools:'].includes(new URL(details.url).protocol);
       callback({ cancel: !allowed });
