@@ -1110,7 +1110,7 @@ export const IPC_RUNTIME_SPECS = {
   },
   [CHANNELS.transformations.view]: {
     request: emptyRequestSchema,
-    response: ipcResultSchema(transformReviewSchema),
+    response: ipcResultSchema(transformReviewSchema.nullable()),
   },
   [CHANNELS.transformations.generate]: {
     request: z.object({ sessionId: nonEmptyString }).strict(),

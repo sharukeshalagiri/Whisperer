@@ -901,7 +901,8 @@ export interface DesktopApi {
     /** Generates an explicit non-native text preview for a document surface. */
     preview(input: TransformationInput): Promise<TransformationResult>
     /** Reopens the latest still-pending review session. */
-    view(): Promise<TransformReview>
+    /** Opens the current proposal, or the last applied Transform's before/after (null). */
+    view(): Promise<TransformReview | null>
     /** Requests a proposal for a main-held captured selection. */
     generate(sessionId: string): Promise<TransformReview>
     /** Applies only the main-held proposal if the native selection is still unchanged. */

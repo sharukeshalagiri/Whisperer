@@ -298,7 +298,7 @@ const desktopApi: DesktopApi = {
     /** Generates a reviewed document-surface preview without native insertion. */
     preview: (input: TransformationInput): Promise<TransformationResult> => invoke(CHANNELS.transformations.preview, input),
     /** Reopens the latest pending review and notifies review subscribers. */
-    view: (): Promise<TransformReview> => invoke(CHANNELS.transformations.view, {}),
+    view: (): Promise<TransformReview | null> => invoke(CHANNELS.transformations.view, {}),
     /** Generates a server proposal scoped to an opaque main-held session. */
     generate: (sessionId: string): Promise<TransformReview> => invoke(CHANNELS.transformations.generate, { sessionId }),
     /** Conditionally replaces only the unchanged original native selection. */

@@ -1328,9 +1328,12 @@ class DesktopMainRuntime {
     this.handle(CHANNELS.transformations.preview, async (input) => this.api.transform(input));
     this.handle(CHANNELS.transformations.view, async () => {
       const review = this.transformCoordinator.latest();
-      if (!review) throw new Error('There is no Transform proposal to view yet.');
-      this.emit(CHANNELS.events.transformReview, review);
-      return review;
+      if (review) { this.emit(CHANNELS.events.transformReview, review); return review; }
+      // Shortcut transforms apply first and offer the before/after afterwards, as the
+      // transformView shortcut shows; the Transforms page button opens the same view.
+      if (!this.lastAppliedTransform) throw new Error('There is no applied Transform to view yet.');
+      this.showTransformResult({ ...this.lastAppliedTransform, expanded: true });
+      return null;
     });
     this.handle(CHANNELS.transformations.generate, async ({ sessionId }) => this.transformCoordinator.generate(sessionId));
     this.handle(CHANNELS.transformations.accept, async ({ sessionId }) => this.transformCoordinator.accept(sessionId));
