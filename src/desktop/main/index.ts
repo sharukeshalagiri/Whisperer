@@ -82,7 +82,7 @@ import runtimeManifest from './runtime/runtime-manifest.json';
 import { MEETING_SEGMENT_MAX_BYTES, meetingChunkDecision } from './runtime/MeetingCaptureLimits';
 import { cancelCaptureRecords, finalizeCapture, recoverInterruptedMeetings } from './runtime/MeetingFinalizer';
 import { buildDiagnostics } from './runtime/Diagnostics';
-import { configureSpellChecker } from './runtime/SpellChecker';
+import { configureSpellChecker, configureSpellCheckerForAllSessions } from './runtime/SpellChecker';
 
 // Native global shortcuts arrive through main rather than a DOM gesture; allow the owned, muted capture graph to resume.
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
@@ -2301,6 +2301,9 @@ if (process.env.WHISPERER_DESKTOP_DATA_DIR) {
   mkdirSync(process.env.WHISPERER_DESKTOP_DATA_DIR, { recursive: true, mode: 0o700 });
   app.setPath('userData', process.env.WHISPERER_DESKTOP_DATA_DIR);
 }
+
+// Every session, including the API and update partitions, must not download spellchecker dictionaries.
+configureSpellCheckerForAllSessions(app, process.platform);
 
 const hasSingleInstanceLock = app.requestSingleInstanceLock();
 if (!hasSingleInstanceLock) app.quit();

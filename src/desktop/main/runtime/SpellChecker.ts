@@ -23,3 +23,22 @@ export function configureSpellChecker(session: SpellCheckerSession, platform: No
   session.setSpellCheckerLanguages([]);
   session.setSpellCheckerEnabled(false);
 }
+
+/** The app events the session-wide policy needs. */
+export interface SessionCreatedSource {
+  on(event: 'session-created', listener: (session: SpellCheckerSession) => void): unknown;
+}
+
+/**
+ * Apply the spellchecker policy to every session the app creates, not just the default one.
+ *
+ * The API client and the update check use their own partitions; each new session starts its own
+ * dictionary download on Linux. Register this before the app is ready.
+ *
+ * Args:
+ *   app: Electron's app.
+ *   platform: process.platform.
+ */
+export function configureSpellCheckerForAllSessions(app: SessionCreatedSource, platform: NodeJS.Platform): void {
+  app.on('session-created', (session) => configureSpellChecker(session, platform));
+}

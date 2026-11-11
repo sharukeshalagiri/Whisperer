@@ -1,6 +1,6 @@
 import { describe, expect, test, vi } from 'vitest';
 
-import { configureSpellChecker } from './SpellChecker';
+import { configureSpellChecker, configureSpellCheckerForAllSessions } from './SpellChecker';
 
 describe('configureSpellChecker', () => {
   test('clears the dictionary languages on Linux, which is what stops the download', () => {
@@ -17,5 +17,14 @@ describe('configureSpellChecker', () => {
       expect(session.setSpellCheckerLanguages).not.toHaveBeenCalled();
       expect(session.setSpellCheckerEnabled).not.toHaveBeenCalled();
     }
+  });
+
+  test('covers every session the app creates, including dedicated partitions', () => {
+    const listeners: Array<(session: { setSpellCheckerEnabled: () => void; setSpellCheckerLanguages: (languages: string[]) => void }) => void> = [];
+    const app = { on: (_event: 'session-created', listener: (typeof listeners)[number]) => { listeners.push(listener); } };
+    configureSpellCheckerForAllSessions(app, 'linux');
+    const partition = { setSpellCheckerEnabled: vi.fn(), setSpellCheckerLanguages: vi.fn() };
+    for (const listener of listeners) listener(partition);
+    expect(partition.setSpellCheckerLanguages).toHaveBeenCalledWith([]);
   });
 });
