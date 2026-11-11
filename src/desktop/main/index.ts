@@ -90,6 +90,9 @@ const execFileAsync = promisify(execFile);
 /** Matches electron-builder's appId so tccutil can reset only this application's consent. */
 const MAC_BUNDLE_ID = 'ai.whisperer.private';
 const MAX_AUDIO_BYTES = 25 * 1024 * 1024;
+/** Offline session restore retries start here and double up to the maximum. */
+const SESSION_RETRY_FIRST_MS = 15_000;
+const SESSION_RETRY_MAX_MS = 5 * 60_000;
 /** Fixed identity of the on-device account; the local server owns exactly one user. */
 const DEVICE_USER = { id: 'device', displayName: 'This device', email: null } as const;
 /** Store scope for on-device data, stable across loopback port changes and kept apart from every remote account. */
@@ -136,6 +139,8 @@ class DesktopMainRuntime {
   private quitting = false;
   private currentUser: { id: string; email?: string | null; displayName?: string } | null = null;
   private captureTarget: Awaited<ReturnType<PlatformService['captureTarget']>> = null;
+  private sessionRetry: ReturnType<typeof setTimeout> | null = null;
+  private sessionRetryDelay = SESSION_RETRY_FIRST_MS;
   private readonly registeredActions = new Set<string>();
   private readonly shortcutCaptureOwners = new Set<number>();
   private shortcutQueue: Promise<void> = Promise.resolve();
@@ -949,19 +954,43 @@ class DesktopMainRuntime {
 
   /** Restores an authenticated account scope without converting offline refresh into a forced logout. */
   private async restoreSession(): Promise<void> {
+    if (this.sessionRetry) { clearTimeout(this.sessionRetry); this.sessionRetry = null; }
     if (!this.settings.getSession()) return;
+    // Open the remembered account's cache at once, so an offline launch keeps history, notes,
+    // snippets and dictation working; the server confirms the account when it is reachable.
+    const remembered = this.settings.getSessionUserId();
+    if (remembered && !this.deviceMode() && !this.store.hasScope()) {
+      this.store.setScope({ server: this.settings.requireApiHost(), userId: remembered });
+    }
     try {
       const scopeEpoch = this.meetingScopeEpoch;
       const user = await this.api.me();
       // A switch to on-device mode while this was in flight owns the scope now.
       if (scopeEpoch !== this.meetingScopeEpoch || this.deviceMode()) return;
       this.currentUser = user;
+      this.sessionRetryDelay = SESSION_RETRY_FIRST_MS;
+      this.settings.rememberSessionUser(user.id);
       this.store.setScope({ server: this.settings.requireApiHost(), userId: user.id });
       void this.meetingSync.sync().then(() => this.emit(CHANNELS.events.meetingsChanged, undefined)).catch(() => undefined);
     } catch (error) {
       if (isUnauthorized(error) && !this.deviceMode()) this.clearSession();
+      else if (!this.deviceMode() && this.settings.getSession()) this.scheduleSessionRetry();
     }
     this.registerShortcut();
+    this.publishState();
+  }
+
+  /** Retries an offline session restore with backoff until the server answers. */
+  private scheduleSessionRetry(): void {
+    if (this.sessionRetry) return;
+    const delayMs = this.sessionRetryDelay;
+    this.sessionRetryDelay = Math.min(delayMs * 2, SESSION_RETRY_MAX_MS);
+    this.sessionRetry = setTimeout(() => {
+      this.sessionRetry = null;
+      if (this.deviceMode()) return;
+      void this.restoreSession().catch((retryError) => this.logger.warn(`Session restore failed: ${safeMessage(retryError)}`));
+    }, delayMs);
+    this.sessionRetry.unref?.();
   }
 
   /** Whether the on-device server is the selected backend. */
@@ -1356,6 +1385,7 @@ class DesktopMainRuntime {
     if (result !== null && !this.deviceMode()) {
       const user = await this.api.me();
       this.currentUser = user;
+      this.settings.rememberSessionUser(user.id);
       this.store.setScope({ server: this.settings.requireApiHost(), userId: user.id });
       void this.meetingSync.sync().then(() => this.emit(CHANNELS.events.meetingsChanged, undefined)).catch(() => undefined);
       this.registerShortcut();

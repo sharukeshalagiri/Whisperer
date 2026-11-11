@@ -60,6 +60,8 @@ export interface SettingsServiceOptions {
 
 type PersistedSettings = Partial<SettingsPreferences> & {
   apiHost?: string | null;
+  /** Account id the last verified session belonged to; not a secret. */
+  sessionUserId?: string | null;
   encryptedSession?: string;
   connectionMode?: ConnectionMode;
   inference?: InferenceSettings;
@@ -112,6 +114,7 @@ function defaultPreferences(platform: DesktopPlatform): SettingsPreferences {
 /** Persists local preferences and holds safe-storage-protected application credentials. */
 export class SettingsService {
   private apiHost: string | null = null;
+  private sessionUserId: string | null = null;
 
   private readonly file: string;
 
@@ -334,7 +337,9 @@ export class SettingsService {
 
   /** Saves a verified host with a validated in-memory session. */
   setConnection(apiHost: string, session: ApplicationSession): void {
-    this.apiHost = this.normalizeApiHost(apiHost);
+    const normalized = this.normalizeApiHost(apiHost);
+    if (normalized !== this.apiHost) this.sessionUserId = null;
+    this.apiHost = normalized;
     this.session = this.validateSession(session);
     this.persist();
   }
@@ -342,9 +347,19 @@ export class SettingsService {
   /** Replaces current credentials or clears the complete connection during sign-out. */
   setSession(session: ApplicationSession | null): void {
     this.session = session ? this.validateSession(session) : null;
-    if (!session) this.apiHost = null;
+    if (!session) { this.apiHost = null; this.sessionUserId = null; }
     this.persist();
   }
+
+  /** Records which account the current session verified as, so a later offline launch can open its cache. */
+  rememberSessionUser(userId: string): void {
+    if (!this.session || this.sessionUserId === userId) return;
+    this.sessionUserId = userId;
+    this.persist();
+  }
+
+  /** The account the saved session last verified as, or null. */
+  getSessionUserId(): string | null { return this.session ? this.sessionUserId : null; }
 
   /** Loads new-format state, falling back to the legacy connection file one time. */
   private load(): void {
@@ -366,6 +381,7 @@ export class SettingsService {
     } catch {
       this.preferences = defaultPreferences(this.platform);
       this.apiHost = null;
+      this.sessionUserId = null;
       this.session = null;
       this.connectionMode = 'remote';
       this.inference = defaultInferenceSettings();
@@ -405,6 +421,7 @@ export class SettingsService {
     }
     this.preferences = { ...defaultPreferences(this.platform), ...preferences, shortcutBindings: migrateShortcutBindings(preferences, this.platform) };
     this.apiHost = saved.apiHost == null ? null : this.normalizeApiHost(saved.apiHost);
+    this.sessionUserId = typeof saved.sessionUserId === 'string' && saved.sessionUserId.length > 0 && saved.sessionUserId.length <= 200 ? saved.sessionUserId : null;
     this.applyPersistedDevice(saved);
 
     if (this.apiHost && typeof saved.encryptedSession === 'string' && this.canPersistCredentials()) {
@@ -531,7 +548,7 @@ export class SettingsService {
 
   /** Atomically persists public settings plus encrypted credentials when secure storage permits it. */
   private persist(): void {
-    const saved: PersistedSettings = { ...this.preferences, apiHost: this.apiHost, connectionMode: this.connectionMode, inference: this.inference };
+    const saved: PersistedSettings = { ...this.preferences, apiHost: this.apiHost, sessionUserId: this.sessionUserId, connectionMode: this.connectionMode, inference: this.inference };
     if (this.session && this.canPersistCredentials()) {
       try {
         saved.encryptedSession = this.options.safeStorage.encryptString(JSON.stringify(this.session)).toString('base64');

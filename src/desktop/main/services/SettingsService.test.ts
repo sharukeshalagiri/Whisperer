@@ -78,6 +78,26 @@ describe('SettingsService', () => {
     expect(readFileSync(join(directory, 'settings.json'), 'utf8')).toContain('encryptedSession');
   });
 
+  test('remembers the signed-in account across restarts so an offline launch keeps its data', () => {
+    const { directory, settings } = createSettings();
+    settings.setConnection('https://api.example.test', { accessToken: 'synthetic-access', refreshToken: 'synthetic-refresh' });
+    settings.rememberSessionUser('user-1');
+
+    const restarted = new SettingsService({ directory, safeStorage: createSafeStorage() });
+    expect(restarted.getSessionUserId()).toBe('user-1');
+    restarted.setSession(null);
+    expect(restarted.getSessionUserId()).toBeNull();
+    expect(new SettingsService({ directory, safeStorage: createSafeStorage() }).getSessionUserId()).toBeNull();
+  });
+
+  test('forgets the remembered account when a different server is connected', () => {
+    const { settings } = createSettings();
+    settings.setConnection('https://api.example.test', { accessToken: 'synthetic-access', refreshToken: 'synthetic-refresh' });
+    settings.rememberSessionUser('user-1');
+    settings.setConnection('https://other.example.test', { accessToken: 'synthetic-access', refreshToken: 'synthetic-refresh' });
+    expect(settings.getSessionUserId()).toBeNull();
+  });
+
   test('refuses to persist credentials using basic_text storage', () => {
     const { directory, settings } = createSettings('basic_text');
     settings.setConnection('https://api.example.test', { accessToken: 'access-secret', refreshToken: 'refresh-secret' });

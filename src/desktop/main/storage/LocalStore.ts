@@ -131,6 +131,9 @@ export class LocalStore {
     }
   }
 
+  /** Whether an account or device scope is attached. */
+  public hasScope(): boolean { return this.scopeHash !== null; }
+
   /**
    * Sets the account scope that can read and write this database.
    *
