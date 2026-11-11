@@ -147,7 +147,7 @@ sequenceDiagram
 
 **Verifying the server.** `GET /v1/health` is public and adds `instanceId`. A matching id alone proves nothing, because any process can echo it. The desktop then sends `POST /v1/local/challenge {"nonce": "<16 to 256 base64url characters>"}` and expects `{"hmac": base64url-unpadded(HMAC-SHA256(key = UTF-8 bootToken text, message = UTF-8 nonce))}`. It compares the result in constant time and only then sends the token.
 
-**Authentication.** Every other `/v1/*` route requires `Authorization: Bearer <bootToken>`. The server has one persistent user (issuer `device`, subject `local`), created on first start, that owns all data. `/login`, `/auth/callback`, `/device/*` and `/v1/auth/refresh` return 404. Logout is accepted and does nothing. Requests whose `Host` is not `127.0.0.1` or `localhost`, or that carry a non-loopback web `Origin`, get 403. This blocks DNS rebinding and web pages.
+**Authentication.** Every other `/v1/*` route requires `Authorization: Bearer <bootToken>`. The server has one persistent user (issuer `device`, subject `local`), created on first start, that owns all data. `/login`, `/auth/callback`, `/auth/approve`, `/device/*` and `/v1/auth/refresh` return 404. Logout is accepted and does nothing. Requests whose `Host` is not `127.0.0.1` or `localhost`, or that carry a non-loopback web `Origin`, get 403. This blocks DNS rebinding and web pages.
 
 **Inference routes** (on a remote deployment, these all return 404):
 

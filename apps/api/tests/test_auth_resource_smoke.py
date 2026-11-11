@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
+from typing import Any
 from uuid import uuid4
 
 import httpx
@@ -10,6 +12,7 @@ import pytest
 from fastapi.testclient import TestClient
 from joserfc import jwt
 from joserfc.jwk import OctKey
+from whisperer_api.auth import sign_in_code
 from whisperer_api.main import create_app
 from whisperer_api.persistence import DeviceAuthorization, User
 from whisperer_api.resources import ResourceService
@@ -190,17 +193,24 @@ def test_oidc_device_resource_and_logout_flow(tmp_path: Path) -> None:
                 str(device_code),
             ).state
         assert isinstance(state, str)
-        callback = client.get("/auth/callback", params={"code": "code", "state": state})
+        confirm = client.get("/auth/callback", params={"code": "code", "state": state})
+        assert confirm.status_code == 200
+        assert sign_in_code(str(device_code)) in confirm.text
+        assert "whisperer://" not in confirm.text
+        callback = client.post("/auth/approve", data={"approval": _approval_token(confirm.text)})
         assert callback.status_code == 200
         completion_url = f"whisperer://auth/transfer/success?device_code={device_code}"
         assert completion_url in callback.text
         assert "access_token" not in callback.text
         assert "refresh_token" not in callback.text
-        assert callback.headers["content-security-policy"] == (
-            "default-src 'none'; style-src 'unsafe-inline'"
-        )
-        assert callback.headers["cache-control"] == "no-store"
-        assert callback.headers["referrer-policy"] == "no-referrer"
+        for page in (confirm, callback):
+            assert page.headers["content-security-policy"] == (
+                "default-src 'none'; style-src 'unsafe-inline'; form-action 'self';"
+                " frame-ancestors 'none'"
+            )
+            assert page.headers["cache-control"] == "no-store"
+            assert page.headers["referrer-policy"] == "no-referrer"
+            assert page.headers["x-frame-options"] == "DENY"
         with next(dependencies.database.session()) as session:
             completed = session.get_one(DeviceAuthorization, str(device_code))
             assert completed.completed_at is not None
@@ -381,6 +391,13 @@ def test_comma_only_allowlist_stays_restricted(tmp_path: Path) -> None:
     assert _callback_status(tmp_path, ",", {"sub": "s", "groups": ["x"]}) == 403
 
 
+def _approval_token(page: str) -> str:
+    """Read the one-time approval token from the sign-in confirmation page."""
+    match = re.search(r'name="approval" value="([^"]+)"', page)
+    assert match is not None
+    return match.group(1)
+
+
 def _challenge(verifier: str) -> str:
     """Build the device challenge with production-compatible SHA-256 encoding.
 
@@ -413,3 +430,73 @@ def _expired_token(dependencies: object, access_token: str) -> str:
     claims = jwt.decode(access_token, key, algorithms=["HS256"]).claims
     claims["exp"] = 1
     return jwt.encode({"alg": "HS256"}, claims, key)
+
+
+def _phishing_setup(tmp_path: Path) -> tuple[TestClient, Any, str, str]:
+    """Start a sign-in the way an attacker would: their own device code and verifier."""
+    settings = Settings(
+        oidc_issuer_url="https://identity.example.test",
+        oidc_client_id="client",
+        oidc_client_secret="secret",
+        public_url="https://api.example.test",
+        token_secret="0123456789abcdef0123456789abcdef",
+        gateway_base_url="https://gateway.example.test",
+        gateway_api_key="gateway-secret",
+        database_url=f"sqlite:///{tmp_path / 'api.sqlite3'}",
+    )
+    app = create_app(settings)
+    dependencies = app.state.dependencies
+    dependencies.http_client = FakeHttpClient()
+    dependencies.oidc = FakeOidc()
+    return TestClient(app), dependencies, str(uuid4()), "attacker-verifier"
+
+
+def test_a_sent_sign_in_link_never_completes_without_approval(tmp_path: Path) -> None:
+    """An attacker-built /login link signs the victim in at the IdP but yields no tokens."""
+    client, dependencies, device_code, verifier = _phishing_setup(tmp_path)
+    with client:
+        client.get(
+            "/login",
+            params={"device_code": device_code, "verifier_challenge": _challenge(verifier)},
+            follow_redirects=False,
+        )
+        with next(dependencies.database.session()) as session:
+            state = session.get_one(DeviceAuthorization, device_code).state
+        victim = client.get("/auth/callback", params={"code": "code", "state": state})
+        assert victim.status_code == 200
+        poll = client.get(
+            "/device/poll",
+            params={"device_code": device_code},
+            headers={"X-Whisperer-Device-Verifier": verifier},
+        )
+        assert poll.json()["status"] == "pending"
+        with next(dependencies.database.session()) as session:
+            record = session.get_one(DeviceAuthorization, device_code)
+            assert record.completed_at is None
+            assert record.completion_access_token is None
+        # Replaying the callback state does not help either.
+        assert client.get("/auth/callback", params={"code": "c", "state": state}).status_code == 400
+
+
+def test_approval_token_is_single_use_and_unguessable(tmp_path: Path) -> None:
+    """Approval needs the exact token from the confirmation page, and works once."""
+    client, dependencies, device_code, verifier = _phishing_setup(tmp_path)
+    with client:
+        client.get(
+            "/login",
+            params={"device_code": device_code, "verifier_challenge": _challenge(verifier)},
+            follow_redirects=False,
+        )
+        with next(dependencies.database.session()) as session:
+            state = session.get_one(DeviceAuthorization, device_code).state
+        page = client.get("/auth/callback", params={"code": "code", "state": state}).text
+        assert client.post("/auth/approve", data={"approval": "guess"}).status_code == 400
+        assert client.post("/auth/approve", data={}).status_code == 400
+        token = _approval_token(page)
+        assert client.post("/auth/approve", data={"approval": token}).status_code == 200
+        assert client.post("/auth/approve", data={"approval": token}).status_code == 400
+
+
+def test_sign_in_code_matches_the_desktop_derivation() -> None:
+    """The desktop derives the same code; this vector is pinned in its tests too."""
+    assert sign_in_code("3f2b8c1e-5d4a-4e6b-9c7d-0a1b2c3d4e5f") == "YC5R-3KNG"

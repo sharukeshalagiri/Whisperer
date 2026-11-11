@@ -299,6 +299,8 @@ export interface BootstrapState {
   overlayDockEdge: 'bottom' | 'left' | 'right'
   /** Result of the latest check of the public release feed. */
   updates: UpdateStatus
+  /** Code the server's approval page must show for the sign-in in progress, or null. */
+  signInCode: string | null
 }
 
 /** A newer release with an installer for this platform and architecture. */

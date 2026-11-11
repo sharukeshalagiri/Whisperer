@@ -185,6 +185,7 @@ class DeviceAuthorization(Base):
     user_id: Mapped[str | None] = mapped_column(ForeignKey("api_users.id", ondelete="SET NULL"))
     completion_access_token: Mapped[str | None] = mapped_column(Text)
     completion_refresh_token: Mapped[str | None] = mapped_column(Text)
+    approval_token_hash: Mapped[str | None] = mapped_column(String(64), unique=True)
     completed_at: Mapped[datetime | None] = mapped_column(UtcDateTime())
     consumed_at: Mapped[datetime | None] = mapped_column(UtcDateTime())
     expires_at: Mapped[datetime] = mapped_column(UtcDateTime(), nullable=False)
@@ -294,6 +295,15 @@ def record_tombstone(
 # existing SQLite files in order. Every statement is a module constant, never request input.
 _COUNTER = "INTEGER NOT NULL DEFAULT 0"
 _ADDED_COLUMNS: tuple[tuple[str, str, tuple[str, ...]], ...] = (
+    (
+        "api_device_authorizations",
+        "approval_token_hash",
+        (
+            "ALTER TABLE api_device_authorizations ADD COLUMN approval_token_hash VARCHAR(64)",
+            "CREATE UNIQUE INDEX IF NOT EXISTS ix_api_device_authorizations_approval"
+            " ON api_device_authorizations (approval_token_hash)",
+        ),
+    ),
     (
         "api_notes",
         "revision",

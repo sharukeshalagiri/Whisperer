@@ -11,10 +11,12 @@ import { messageFromError } from './deviceApi'
 export interface SignInScreenProps {
   /** Refreshes app bootstrap state after browser-based device sign-in completes. */
   onComplete: () => Promise<void>
+  /** Code the browser's approval page must show for the sign-in in progress. */
+  signInCode?: string | null
 }
 
 /** Starts browser device-code sign-in without exposing account credentials to the renderer. */
-export function SignInScreen({ onComplete }: SignInScreenProps): ReactElement {
+export function SignInScreen({ onComplete, signInCode = null }: SignInScreenProps): ReactElement {
   const [apiHost, setApiHost] = useState('')
   const [phase, setPhase] = useState<'idle' | 'waiting' | 'device'>('idle')
   const [error, setError] = useState<string>()
@@ -128,7 +130,9 @@ export function SignInScreen({ onComplete }: SignInScreenProps): ReactElement {
             ) : null}
             {pending ? (
               <p className="device-hint" role="status">
-                Your browser is open. Finish signing in there, then return here.
+                Your browser is open. Finish signing in there, then approve the sign-in only if
+                the page shows this code:{' '}
+                <strong className="sign-in-code">{signInCode ?? '…'}</strong>
               </p>
             ) : null}
             <button

@@ -21,7 +21,7 @@ export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends 
 /**
  * Callback
  *
- * Verify a browser OIDC callback and complete its protected device transaction.
+ * Verify a browser OIDC callback and ask the person to approve the sign-in.
  *
  * Args:
  * code: Provider authorization code.
@@ -29,7 +29,7 @@ export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends 
  * session: Injected API database transaction.
  *
  * Returns:
- * Minimal no-token browser completion page.
+ * No-token confirmation page; nothing completes until the person approves it.
  */
 export const oidcCallback = <ThrowOnError extends boolean = false>(options: Options<OidcCallbackData, ThrowOnError>): RequestResult<OidcCallbackResponses, OidcCallbackErrors, ThrowOnError> => (options.client ?? client).get<OidcCallbackResponses, OidcCallbackErrors, ThrowOnError>({ url: '/auth/callback', ...options });
 

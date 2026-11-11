@@ -223,6 +223,7 @@ def test_remote_sign_in_routes_are_absent(
         == 404
     )
     assert client.get("/auth/callback", params={"code": "c", "state": "s"}).status_code == 404
+    assert client.post("/auth/approve", data={"approval": "x"}).status_code == 404
     assert client.get("/device/poll", params={"device_code": code}).status_code == 404
     assert client.get("/device/stream", params={"device_code": code}).status_code == 404
     assert client.post("/v1/auth/refresh", json={"refreshToken": "x"}).status_code == 404

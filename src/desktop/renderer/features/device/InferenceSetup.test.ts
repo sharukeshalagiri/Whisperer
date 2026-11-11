@@ -60,6 +60,7 @@ function state(partial: Partial<PublicSettings>, server: Partial<LocalServerStat
     quickTransform: null,
     overlayDockEdge: 'bottom',
     updates: { currentVersion: '0.1.0', checking: false, checkedAt: null, update: null, error: null },
+    signInCode: null,
   }
 }
 

@@ -27,6 +27,20 @@ from whisperer_api.schemas import DevicePollResponse, RefreshResponse, UserRespo
 from whisperer_api.settings import Settings
 
 
+def sign_in_code(device_code: str) -> str:
+    """Derive the short code the desktop and the approval page both show for one sign-in.
+
+    Args:
+        device_code: Desktop-generated transaction id.
+
+    Returns:
+        Eight base32 characters as ``XXXX-XXXX``. The desktop derives the same value.
+    """
+    digest = hashlib.sha256(device_code.encode()).digest()
+    letters = base64.b32encode(digest[:5]).decode()
+    return f"{letters[:4]}-{letters[4:8]}"
+
+
 class Clock(Protocol):
     """Describe an injected UTC clock.
 
@@ -501,6 +515,56 @@ class DeviceAuthorizationService:
         record.nonce = nonce
         record.code_verifier = code_verifier
         session.flush()
+
+    def await_approval(self, session: Session, record: DeviceAuthorization, user: User) -> str:
+        """Hold a verified identity until the person approves this sign-in in the browser.
+
+        Args:
+            session: Open database session receiving approval state.
+            record: Browser transaction whose callback was just verified.
+            user: Verified linked OIDC user.
+
+        Returns:
+            One-time approval token for the confirmation form; only its hash is stored.
+        """
+        token = self._random_value()
+        record.user_id = user.id
+        record.approval_token_hash = hashlib.sha256(token.encode()).hexdigest()
+        record.state = None
+        record.nonce = None
+        record.code_verifier = None
+        session.flush()
+        return token
+
+    def approve(self, session: Session, token: str) -> DeviceAuthorization | None:
+        """Complete the sign-in a person approved, once.
+
+        Args:
+            session: Open database session containing transaction state.
+            token: Approval token from the confirmation form.
+
+        Returns:
+            The completed transaction, or None for an unknown, used or expired token.
+        """
+        record = session.scalar(
+            select(DeviceAuthorization).where(
+                DeviceAuthorization.approval_token_hash
+                == hashlib.sha256(token.encode()).hexdigest()
+            )
+        )
+        if (
+            record is None
+            or record.completed_at is not None
+            or record.expires_at <= self._clock.now()
+            or record.user_id is None
+        ):
+            return None
+        user = session.get(User, record.user_id)
+        if user is None:
+            return None
+        record.approval_token_hash = None
+        self.complete(session, record, user)
+        return record
 
     def complete(self, session: Session, record: DeviceAuthorization, user: User) -> None:
         """Issue local tokens and mark a browser transaction complete.

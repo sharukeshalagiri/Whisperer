@@ -1342,13 +1342,17 @@ class DesktopMainRuntime {
   private async bootstrap(): Promise<BootstrapState> {
     const capture = this.meetingCapture;
     const meetingCapture: MeetingCaptureState | null = capture ? { id: capture.id, title: capture.title, status: capture.status, startedAt: capture.startedAt, error: capture.error } : null;
-    return { capabilities: await this.capabilities(), recording: Object.assign({}, this.recording, { mode: this.shortcutRecordingMode }), settings: this.publicSettings(), user: this.publicUser(), version: app.getVersion(), platform: desktopPlatform(), meetingCapture, transform: this.transformActivity, quickTransform: this.quickTransform(), overlayDockEdge: this.overlayDockEdge, updates: this.updates.status() };
+    return { capabilities: await this.capabilities(), recording: Object.assign({}, this.recording, { mode: this.shortcutRecordingMode }), settings: this.publicSettings(), user: this.publicUser(), version: app.getVersion(), platform: desktopPlatform(), meetingCapture, transform: this.transformActivity, quickTransform: this.quickTransform(), overlayDockEdge: this.overlayDockEdge, updates: this.updates.status(), signInCode: this.api.pendingSignInCode() };
   }
 
   /** Completes a device login, scopes local data to that exact server and user, then publishes state. */
   private async signIn(apiHost: string): Promise<AuthState> {
     if (this.deviceMode()) throw Object.assign(new Error('Switch to a server before signing in.'), { code: 'CONFLICT' });
-    const result = await this.api.signIn(apiHost);
+    const pending = this.api.signIn(apiHost);
+    // Show the approval code while the browser step runs; the server page must match it.
+    this.publishState();
+    let result: Awaited<typeof pending>;
+    try { result = await pending; } finally { this.publishState(); }
     if (result !== null && !this.deviceMode()) {
       const user = await this.api.me();
       this.currentUser = user;

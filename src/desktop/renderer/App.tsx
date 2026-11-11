@@ -273,7 +273,7 @@ export function App(): React.JSX.Element {
   if (loadError) return <StartupRecovery error={loadError} onRetry={() => void refresh()} />
   if (!bootstrap) return <LoadingScreen />
   if (route !== 'scratchpad' && needsPreflight(bootstrap.platform, bootstrap.capabilities, preflightDismissed)) return <div className="auth-window"><WindowControls nativeControls={bootstrap.platform === 'darwin'} /><PermissionsCheckScreen capabilities={bootstrap.capabilities} onContinue={() => setPreflightDismissed(true)} /></div>
-  if (!canEnterHub(bootstrap.settings)) return <div className="auth-window"><WindowControls nativeControls={bootstrap.platform === 'darwin'} /><SignInScreen onComplete={refresh} /></div>
+  if (!canEnterHub(bootstrap.settings)) return <div className="auth-window"><WindowControls nativeControls={bootstrap.platform === 'darwin'} /><SignInScreen onComplete={refresh} signInCode={bootstrap.signInCode} /></div>
   if (!bootstrap.settings.onboardingCompleted) return <RecorderProvider microphoneId={bootstrap.settings.microphoneId}><div className="auth-window"><WindowControls nativeControls={bootstrap.platform === 'darwin'} /><OnboardingScreen state={bootstrap} onComplete={refresh} /></div></RecorderProvider>
   if (route === 'scratchpad') return <ScratchpadScreen noteId={getScratchpadNoteId(window.location.hash)} />
 

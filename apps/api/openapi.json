@@ -2156,7 +2156,7 @@
   "paths": {
     "/auth/callback": {
       "get": {
-        "description": "Verify a browser OIDC callback and complete its protected device transaction.\n\nArgs:\n    code: Provider authorization code.\n    state: Server-issued transaction state.\n    session: Injected API database transaction.\n\nReturns:\n    Minimal no-token browser completion page.",
+        "description": "Verify a browser OIDC callback and ask the person to approve the sign-in.\n\nArgs:\n    code: Provider authorization code.\n    state: Server-issued transaction state.\n    session: Injected API database transaction.\n\nReturns:\n    No-token confirmation page; nothing completes until the person approves it.",
         "operationId": "oidcCallback",
         "parameters": [
           {

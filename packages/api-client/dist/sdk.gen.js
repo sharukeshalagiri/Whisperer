@@ -8,7 +8,7 @@ const client_gen_1 = require("./client.gen");
 /**
  * Callback
  *
- * Verify a browser OIDC callback and complete its protected device transaction.
+ * Verify a browser OIDC callback and ask the person to approve the sign-in.
  *
  * Args:
  * code: Provider authorization code.
@@ -16,7 +16,7 @@ const client_gen_1 = require("./client.gen");
  * session: Injected API database transaction.
  *
  * Returns:
- * Minimal no-token browser completion page.
+ * No-token confirmation page; nothing completes until the person approves it.
  */
 const oidcCallback = (options) => (options.client ?? client_gen_1.client).get({ url: '/auth/callback', ...options });
 exports.oidcCallback = oidcCallback;

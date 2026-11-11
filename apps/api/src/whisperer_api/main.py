@@ -32,7 +32,13 @@ from sqlalchemy.orm import Session
 from sse_starlette.sse import EventSourceResponse
 
 from whisperer_api.audio import AudioDecodeError
-from whisperer_api.auth import DeviceAuthorizationService, OidcClient, SessionService, SystemClock
+from whisperer_api.auth import (
+    DeviceAuthorizationService,
+    OidcClient,
+    SessionService,
+    SystemClock,
+    sign_in_code,
+)
 from whisperer_api.http_clients import LOOPBACK_DIRECT
 from whisperer_api.inference import (
     LLM_OFF_MESSAGE,
@@ -344,6 +350,94 @@ def meeting_ai_service(
     )
 
 
+_BROWSER_PAGE_HEADERS = {
+    "Cache-Control": "no-store",
+    "Content-Security-Policy": (
+        "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'"
+    ),
+    "Referrer-Policy": "no-referrer",
+    "X-Frame-Options": "DENY",
+}
+_BROWSER_PAGE_STYLE = (
+    "body{font-family:system-ui,sans-serif;line-height:1.5;margin:3rem;max-width:36rem}"
+    "a{color:inherit;font-weight:600}"
+    ".code{font:600 1.6rem ui-monospace,monospace;letter-spacing:.12em}"
+    "button{font:inherit;font-weight:600;padding:.5rem 1.2rem}"
+)
+
+
+def _approval_page(code: str, token: str) -> Response:
+    """Ask the person to confirm the code their own Whisperer app shows before signing in.
+
+    Args:
+        code: Short sign-in code derived from the device code.
+        token: One-time approval token for the form.
+
+    Returns:
+        No-token HTML page with an approval form.
+    """
+    return Response(
+        f"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Approve Whisperer sign-in</title>
+  <style>{_BROWSER_PAGE_STYLE}</style>
+</head>
+<body>
+  <main>
+    <h1>Approve sign-in</h1>
+    <p>Whisperer on your computer should be showing this code:</p>
+    <p class="code">{escape(code)}</p>
+    <p>Approve only if you started this sign-in and the codes match. If Whisperer is not
+    showing this code, someone else sent you this link: close this page.</p>
+    <form method="post" action="approve">
+      <input type="hidden" name="approval" value="{escape(token, quote=True)}">
+      <button type="submit">Approve sign-in</button>
+    </form>
+  </main>
+</body>
+</html>""",
+        headers=_BROWSER_PAGE_HEADERS,
+        media_type="text/html",
+        status_code=200,
+    )
+
+
+def _completion_page(device_code: str) -> Response:
+    """Hand the browser back to the desktop after an approved sign-in.
+
+    Args:
+        device_code: Desktop transaction id; the only value the return link carries.
+
+    Returns:
+        No-token HTML page that opens the desktop.
+    """
+    completion_url = f"{_DESKTOP_COMPLETION_URL}?{urlencode({'device_code': device_code})}"
+    escaped_completion_url = escape(completion_url, quote=True)
+    return Response(
+        f"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="refresh" content="0;url={escaped_completion_url}">
+  <title>Signed in to Whisperer</title>
+  <style>{_BROWSER_PAGE_STYLE}</style>
+</head>
+<body>
+  <main>
+    <p>You're signed in. Return to Whisperer.</p>
+    <p>If Whisperer didn't open, click <a href="{escaped_completion_url}">Open Whisperer</a> or
+    switch back to the app — it finishes signing in automatically.</p>
+  </main>
+</body>
+</html>""",
+        headers=_BROWSER_PAGE_HEADERS,
+        media_type="text/html",
+        status_code=200,
+    )
+
+
 def create_app(
     settings: Settings | None = None,
     *,
@@ -496,7 +590,7 @@ def create_app(
 
     @app.get("/auth/callback", operation_id="oidcCallback")
     async def callback(code: str, state: str, session: session_dependency) -> Response:
-        """Verify a browser OIDC callback and complete its protected device transaction.
+        """Verify a browser OIDC callback and ask the person to approve the sign-in.
 
         Args:
             code: Provider authorization code.
@@ -504,7 +598,7 @@ def create_app(
             session: Injected API database transaction.
 
         Returns:
-            Minimal no-token browser completion page.
+            No-token confirmation page; nothing completes until the person approves it.
         """
         _remote_only(dependencies)
         record = session.scalar(
@@ -554,35 +648,31 @@ def create_app(
             )
             session.add(user)
             session.flush()
-        dependencies.devices.complete(session, record, user)
-        completion_query = urlencode({"device_code": record.device_code})
-        completion_url = f"{_DESKTOP_COMPLETION_URL}?{completion_query}"
-        escaped_completion_url = escape(completion_url, quote=True)
-        return Response(
-            f"""<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta http-equiv="refresh" content="0;url={escaped_completion_url}">
-  <title>Signed in to Whisperer</title>
-  <style>body{{font-family:system-ui,sans-serif;line-height:1.5;margin:3rem;max-width:36rem}}a{{color:inherit;font-weight:600}}</style>
-</head>
-<body>
-  <main>
-    <p>You're signed in. Return to Whisperer.</p>
-    <p>If Whisperer didn't open, click <a href="{escaped_completion_url}">Open Whisperer</a> or
-    switch back to the app — it finishes signing in automatically.</p>
-  </main>
-</body>
-</html>""",
-            headers={
-                "Cache-Control": "no-store",
-                "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'",
-                "Referrer-Policy": "no-referrer",
-            },
-            media_type="text/html",
-            status_code=200,
+        token = dependencies.devices.await_approval(session, record, user)
+        return _approval_page(sign_in_code(record.device_code), token)
+
+    @app.post("/auth/approve", include_in_schema=False)
+    async def approve(request: Request, session: session_dependency) -> Response:
+        """Complete the sign-in the person approved on the confirmation page.
+
+        Args:
+            request: Browser form post carrying the one-time approval token.
+            session: Injected API database transaction.
+
+        Returns:
+            Minimal no-token page that hands the browser back to the desktop.
+        """
+        _remote_only(dependencies)
+        form = await request.form()
+        token = form.get("approval")
+        record = (
+            dependencies.devices.approve(session, token)
+            if isinstance(token, str) and 0 < len(token) <= 128
+            else None
         )
+        if record is None:
+            raise HTTPException(400, "This sign-in is invalid, already used or expired.")
+        return _completion_page(record.device_code)
 
     @app.get(
         "/device/poll", response_model=DevicePollResponse, operation_id="pollDeviceAuthorization"

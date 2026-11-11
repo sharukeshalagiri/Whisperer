@@ -5,6 +5,7 @@ import * as operations from '../../../../packages/api-client/src/sdk.gen';
 import type { DevicePollResponse, DictionaryResponse, NoteResponse, SyncSnapshot, TranscriptResponse } from '../../../../packages/api-client/src/types.gen';
 import type { AppMetric, ConnectionMode, DailyMetric, Metrics, TransformationInput } from '../../shared/contracts';
 import { SettingsService, type ApplicationSession } from './SettingsService';
+import { signInCode } from '../runtime/SignInCode';
 
 /** Injects the system-trusted transport, secure preferences and browser opener. */
 export interface ApiServiceOptions {
@@ -99,6 +100,9 @@ export class ApiService {
       if (this.login === transaction) this.login = null;
     }
   }
+
+  /** The code the approval page must show for the sign-in in progress, or null when none is. */
+  pendingSignInCode(): string | null { return this.login ? signInCode(this.login.code) : null; }
 
   /** Drops every in-flight result after a backend switch or local server restart. */
   invalidate(): void { this.routeEpoch += 1; }

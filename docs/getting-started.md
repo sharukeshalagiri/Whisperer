@@ -21,7 +21,7 @@ Updates are not installed by the app. It checks the release feed after launch an
 ## Choose a mode
 
 - **Local mode.** Press `Continue without signing in`. Whisperer runs its own server on this computer, and the next step downloads the runtime and a speech model. Nothing leaves the machine unless you point it at an HTTP endpoint. [Local mode](local-mode.md) covers what is downloaded and what stays local.
-- **Remote mode.** Enter the URL of your Whisperer server, such as `https://whisperer.example.com`, and press `Sign in via browser`. The browser opens your identity provider, and the app signs in when you return. The URL is saved only after sign in completes and is cleared when you sign out. Remote servers must use HTTPS. A server on this computer may use `http://127.0.0.1:14318`.
+- **Remote mode.** Enter the URL of your Whisperer server, such as `https://whisperer.example.com`, and press `Sign in via browser`. The browser opens your identity provider. After you sign in there, the browser shows a code: approve only if it matches the code Whisperer shows, and the app signs in when you return. A sign-in link that someone else sent you cannot complete, because no Whisperer on your computer shows its code. The URL is saved only after sign in completes and is cleared when you sign out. Remote servers must use HTTPS. A server on this computer may use `http://127.0.0.1:14318`.
 - **Either way,** a `Cloud` or `Laptop` mark beside the logo names the active backend. Settings › Account switches between them, and the switch waits for a running dictation, meeting or transform to finish.
 
 ## Set up this device

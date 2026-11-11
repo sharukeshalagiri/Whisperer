@@ -513,6 +513,7 @@ export const bootstrapStateSchema = z
     quickTransform: z.object({ id: nonEmptyString, name: z.string().min(1).max(80) }).strict().nullable(),
     overlayDockEdge: z.enum(['bottom', 'left', 'right']),
     updates: updateStatusSchema,
+    signInCode: z.string().regex(/^[A-Z2-7]{4}-[A-Z2-7]{4}$/).nullable(),
   })
   .strict()
 
