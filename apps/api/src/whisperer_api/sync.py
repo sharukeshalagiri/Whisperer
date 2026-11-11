@@ -7,6 +7,7 @@ dictation metric events are immutable, so they are simply combined. Audio never 
 
 from __future__ import annotations
 
+import hashlib
 from typing import TYPE_CHECKING
 from uuid import UUID
 
@@ -34,6 +35,47 @@ if TYPE_CHECKING:
     from whisperer_api.metrics import MetricsService
 
 _IN_PROGRESS = ("pending", "running")
+
+
+def local_copy_wins(
+    local_updated_at: datetime,
+    local_content: tuple[str | None, ...],
+    incoming_updated_at: datetime,
+    incoming_content: tuple[str | None, ...],
+) -> bool:
+    """Decide a merge the same way on both servers, so they converge.
+
+    The newer edit wins. On an exact tie, both sides keep the copy whose content fingerprint is
+    larger; before, each side kept its own copy and the two never converged.
+
+    Args:
+        local_updated_at: When the local copy last changed.
+        local_content: The local copy's user-visible fields.
+        incoming_updated_at: When the incoming copy last changed.
+        incoming_content: The incoming copy's fields, in the same order.
+
+    Returns:
+        True when the local copy stays.
+    """
+    if local_updated_at != incoming_updated_at:
+        return local_updated_at > incoming_updated_at
+    return _fingerprint(local_content) >= _fingerprint(incoming_content)
+
+
+def _fingerprint(content: tuple[str | None, ...]) -> str:
+    """Hash fields into a comparable, order-stable value.
+
+    Args:
+        content: Field values.
+
+    Returns:
+        Hex SHA-256 of the length-prefixed fields.
+    """
+    digest = hashlib.sha256()
+    for value in content:
+        encoded = (value or "").encode()
+        digest.update(len(encoded).to_bytes(8, "big") + encoded)
+    return digest.hexdigest()
 
 
 class SyncService:
@@ -236,7 +278,12 @@ class SyncService:
         if note is None:
             note = Note(id=str(incoming.id), user_id=user_id, created_at=incoming.created_at)
             session.add(note)
-        elif note.user_id != user_id or note.updated_at >= incoming.updated_at:
+        elif note.user_id != user_id or local_copy_wins(
+            note.updated_at,
+            (note.title, note.content, note.summary),
+            incoming.updated_at,
+            (incoming.title, incoming.content, incoming.summary),
+        ):
             return 0
         else:
             # Transformations compare this revision, so a replaced text must advance it.
@@ -276,7 +323,9 @@ class SyncService:
                 )
             )
             return 1
-        if entry.updated_at >= incoming.updated_at:
+        if local_copy_wins(
+            entry.updated_at, (entry.replacement,), incoming.updated_at, (incoming.replacement,)
+        ):
             return 0
         entry.replacement = incoming.replacement
         entry.updated_at = incoming.updated_at
@@ -309,7 +358,12 @@ class SyncService:
             session.add(meeting)
         elif (
             meeting.user_id != user_id
-            or meeting.updated_at >= incoming.updated_at
+            or local_copy_wins(
+                meeting.updated_at,
+                (meeting.title, meeting.transcript, meeting.summary),
+                incoming.updated_at,
+                (incoming.title, incoming.transcript, incoming.summary),
+            )
             or meeting.transcript_status in _IN_PROGRESS
             or meeting.summary_status in _IN_PROGRESS
         ):
