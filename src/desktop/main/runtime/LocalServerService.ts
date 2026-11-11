@@ -353,7 +353,7 @@ export class LocalServerService {
       if (this.launch !== launch || launch.stopping) { clearInterval(launch.health); return; }
       checking = true;
       void (async () => {
-        let healthy = false;
+        let healthy: boolean;
         try {
           const response = await this.options.fetch(`${host}/v1/health`, { redirect: 'error', signal: AbortSignal.timeout(5000) });
           const body = response.ok ? await response.json() as { instanceId?: unknown } : {};
