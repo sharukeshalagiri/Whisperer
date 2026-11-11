@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, test } from 'vitest';
 
 import { LocalStore } from '../storage/LocalStore';
-import { finalizeCapture, recoverInterruptedMeetings } from './MeetingFinalizer';
+import { cancelCaptureRecords, finalizeCapture, recoverInterruptedMeetings } from './MeetingFinalizer';
 
 const directories: string[] = [];
 const stores: LocalStore[] = [];
@@ -61,6 +61,26 @@ describe('recoverInterruptedMeetings', () => {
     const discarded: string[] = [];
     recoverInterruptedMeetings(store, queue, () => ({ size: 0, modifiedAt: 2_000 }), (meeting, segment) => discarded.push(`${meeting}/${segment}`));
     expect(discarded).toEqual(['m/s']);
+    expect(queued).toEqual([]);
+  });
+});
+
+describe('cancelCaptureRecords', () => {
+  test('a cancelled resume closes the meeting on the server again and keeps earlier audio', () => {
+    const { store, file, queue, queued } = recordingMeeting(1024);
+    store.saveMeetingSegment({ id: 'earlier', meetingId: 'm', audioPath: file, contentType: 'audio/webm', createdAt: 500, durationMs: 1000, language: 'en', status: 'synced' });
+    const removed = cancelCaptureRecords(store, queue, { id: 'm', title: 'Standup', file, bytes: 1024, createdAt: 1_000, segmentId: 's' });
+    expect(removed).toBe(false);
+    expect(store.listMeetingSegments('m').map((segment) => segment.id)).toEqual(['earlier']);
+    expect(store.getMeeting('m')?.status).toBe('complete');
+    expect(queued).toEqual(['finish:m']);
+  });
+
+  test('a cancelled new meeting disappears with its queued work', () => {
+    const { store, file, queue, queued } = recordingMeeting(1024);
+    const removed = cancelCaptureRecords(store, queue, { id: 'm', title: 'Standup', file, bytes: 1024, createdAt: 1_000, segmentId: 's' });
+    expect(removed).toBe(true);
+    expect(store.getMeeting('m')).toBeNull();
     expect(queued).toEqual([]);
   });
 });

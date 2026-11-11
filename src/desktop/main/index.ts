@@ -79,7 +79,7 @@ import { LocalServerService, spawnLocalChild } from './runtime/LocalServerServic
 import { freeDiskBytes, RuntimeInstaller, spawnCommand, type RuntimeManifest } from './runtime/RuntimeInstaller';
 import runtimeManifest from './runtime/runtime-manifest.json';
 import { MEETING_SEGMENT_MAX_BYTES, meetingChunkDecision } from './runtime/MeetingCaptureLimits';
-import { finalizeCapture, recoverInterruptedMeetings } from './runtime/MeetingFinalizer';
+import { cancelCaptureRecords, finalizeCapture, recoverInterruptedMeetings } from './runtime/MeetingFinalizer';
 import { buildDiagnostics } from './runtime/Diagnostics';
 
 // Native global shortcuts arrive through main rather than a DOM gesture; allow the owned, muted capture graph to resume.
@@ -1950,17 +1950,8 @@ class DesktopMainRuntime {
     this.emit(CHANNELS.events.meetingCaptureCommand, { command: 'cancel', id: capture.id, title: capture.title });
     try {
       if (this.isContainedMeetingAudio(capture.file) && existsSync(capture.file)) unlinkSync(capture.file);
-      this.store.deleteMeetingSegment(capture.segmentId);
-      this.store.discardOutboxForEntity(capture.segmentId);
-      const remaining = this.store.listMeetingSegments(capture.id);
-      if (remaining.length === 0) {
-        this.store.discardOutboxForEntity(capture.id);
-        this.store.deleteMeeting(capture.id);
-      }
-      else {
-        const meeting = this.store.getMeeting(capture.id);
-        if (meeting) this.store.saveMeeting({ ...meeting, status: 'complete', syncState: meeting.syncState ?? 'synced' });
-      }
+      // A cancelled resume queues a finish, so the server does not keep the meeting open forever.
+      if (!cancelCaptureRecords(this.store, this.meetingSync, capture)) void this.meetingSync.sync().catch(() => undefined);
     } catch (error) { this.logger.warn(`Meeting cleanup failed: ${safeMessage(error)}`); }
     this.emit(CHANNELS.events.meetingsChanged, undefined);
     this.publishState();

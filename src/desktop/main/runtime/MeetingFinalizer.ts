@@ -78,3 +78,33 @@ export function recoverInterruptedMeetings(
   }
   return recovered;
 }
+
+/**
+ * Remove a cancelled capture's segment and settle its meeting.
+ *
+ * A new meeting with nothing else recorded is deleted with its queued operations. A resumed
+ * meeting keeps its earlier segments, and a finish is queued so the server closes the meeting
+ * the resume re-opened.
+ *
+ * Args:
+ *   store: Scoped local store.
+ *   queue: Meeting outbox.
+ *   capture: The cancelled capture.
+ * Returns:
+ *   Whether the whole meeting was removed.
+ */
+export function cancelCaptureRecords(store: LocalStore, queue: MeetingQueue, capture: CaptureRecord): boolean {
+  return store.transaction(() => {
+    store.deleteMeetingSegment(capture.segmentId);
+    store.discardOutboxForEntity(capture.segmentId);
+    if (store.listMeetingSegments(capture.id).length === 0) {
+      store.discardOutboxForEntity(capture.id);
+      store.deleteMeeting(capture.id);
+      return true;
+    }
+    const meeting = store.getMeeting(capture.id);
+    if (meeting) store.saveMeeting({ ...meeting, status: 'complete', syncState: 'pending' });
+    queue.queueFinish(capture.id);
+    return false;
+  });
+}
