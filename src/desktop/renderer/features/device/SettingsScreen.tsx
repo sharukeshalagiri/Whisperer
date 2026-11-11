@@ -29,6 +29,7 @@ export interface SettingsScreenProps {
 type BooleanSetting =
   | 'autoPaste'
   | 'launchAtLogin'
+  | 'checkUpdatesAutomatically'
   | 'polish'
   | 'scratchpadInBar'
   | 'showStatusBar'
@@ -354,6 +355,12 @@ export function SettingsScreen({
                 id="launch-at-login"
                 label="Open Whisperer at login"
                 onChange={saveCheckbox('launchAtLogin')}
+              />
+              <ToggleRow
+                checked={settings.checkUpdatesAutomatically}
+                id="check-updates"
+                label="Check for updates automatically (contacts GitHub at launch and every 6 hours)"
+                onChange={saveCheckbox('checkUpdatesAutomatically')}
               />
               <ToggleRow
                 checked={settings.showStatusBar}

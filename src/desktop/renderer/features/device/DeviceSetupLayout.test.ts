@@ -37,6 +37,7 @@ function setupState(required: boolean): BootstrapState {
       microphoneId: null,
       onboardingCompleted: false,
       launchAtLogin: false,
+      checkUpdatesAutomatically: false,
       theme: 'dark',
       retainAudio: false,
       holdToTalk: false,

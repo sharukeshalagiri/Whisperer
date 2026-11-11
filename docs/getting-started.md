@@ -16,7 +16,7 @@ Download the installer for your platform from the [releases page](https://github
 | Windows | `Whisperer-<version>-win-x64.exe` | Unsigned NSIS installer. SmartScreen asks once. |
 | Linux | `Whisperer-<version>-linux-amd64.deb` | X11 insertion needs `xdotool`. On Wayland, completed dictations go to the clipboard. |
 
-Updates are not installed by the app. It checks the release feed after launch and every six hours, and the bell offers the download when a newer build exists. Run the new installer over the old one and your data stays in place.
+Updates are not installed by the app. Choose Check for updates in Settings, or turn on Check for updates automatically in Settings › System to check after launch and every six hours; either way the app contacts GitHub, and the bell offers the download when a newer build exists. The automatic check is off by default. Run the new installer over the old one and your data stays in place.
 
 ## Choose a mode
 

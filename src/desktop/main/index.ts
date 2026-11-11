@@ -317,7 +317,8 @@ class DesktopMainRuntime {
     // A transient offline profile request must never keep the local hub invisible.
     this.showHub();
     // Development builds carry the placeholder package version, so only packaged builds check on their own.
-    if (app.isPackaged) this.updates.start();
+    // The background check contacts GitHub, so it runs only when the user turned it on.
+    if (app.isPackaged && this.settings.get().checkUpdatesAutomatically) this.updates.start();
     void this.refreshRuntimeInstalled().then(() => this.restoreConnection()).then(() => this.publishState()).catch((error) => this.logger.warn(`Session restore failed: ${safeMessage(error)}`));
     if (pendingDeepLink) {
       const deepLink = pendingDeepLink;
@@ -1448,6 +1449,10 @@ class DesktopMainRuntime {
     if (Object.hasOwn(partial, 'shortcut') || Object.hasOwn(partial, 'scratchpadShortcut') || Object.hasOwn(partial, 'holdToTalk') || Object.hasOwn(partial, 'shortcutBindings') || Object.hasOwn(partial, 'onboardingCompleted') || Object.hasOwn(partial, 'transformsEnabled')) this.registerShortcut();
     if (Object.hasOwn(partial, 'showStatusBar') || Object.hasOwn(partial, 'scratchpadInBar')) this.syncStatusBar();
     if (Object.hasOwn(partial, 'launchAtLogin')) this.applyLoginSetting();
+    if (Object.hasOwn(partial, 'checkUpdatesAutomatically')) {
+      if (app.isPackaged && this.settings.get().checkUpdatesAutomatically) this.updates.start();
+      else this.updates.stop();
+    }
     this.publishState();
     return this.publicSettings();
   }
@@ -2238,6 +2243,7 @@ function toPublicSettings(settings: ReturnType<SettingsService['get']>): PublicS
     holdToTalk: settings.holdToTalk,
     language: settings.language || 'en',
     launchAtLogin: settings.launchAtLogin,
+    checkUpdatesAutomatically: settings.checkUpdatesAutomatically,
     microphoneId: settings.microphoneId || null,
     onboardingCompleted: settings.onboardingCompleted,
     polish: settings.polish,

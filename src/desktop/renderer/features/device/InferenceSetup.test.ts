@@ -37,6 +37,7 @@ function state(partial: Partial<PublicSettings>, server: Partial<LocalServerStat
       microphoneId: null,
       onboardingCompleted: false,
       launchAtLogin: false,
+      checkUpdatesAutomatically: false,
       theme: 'dark',
       retainAudio: false,
       holdToTalk: false,

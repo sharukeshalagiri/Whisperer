@@ -33,6 +33,7 @@ export interface SettingsPreferences {
   holdToTalk: boolean;
   language: string;
   launchAtLogin: boolean;
+  checkUpdatesAutomatically: boolean;
   microphoneId: string;
   onboardingCompleted: boolean;
   polish: boolean;
@@ -79,6 +80,7 @@ const DEFAULT_PREFERENCES: Readonly<SettingsPreferences> = Object.freeze({
   holdToTalk: false,
   language: '',
   launchAtLogin: false,
+  checkUpdatesAutomatically: false,
   microphoneId: '',
   onboardingCompleted: false,
   polish: false,
@@ -509,6 +511,7 @@ export class SettingsService {
       || (candidate.autoAfterDictationTransform.definitionId !== null && typeof candidate.autoAfterDictationTransform.definitionId !== 'string')) throw new TypeError('Invalid automatic transform');
     if (typeof candidate.autoPaste !== 'boolean' || typeof candidate.holdToTalk !== 'boolean'
       || typeof candidate.launchAtLogin !== 'boolean' || typeof candidate.onboardingCompleted !== 'boolean'
+      || typeof candidate.checkUpdatesAutomatically !== 'boolean'
       || typeof candidate.polish !== 'boolean' || typeof candidate.retainAudio !== 'boolean'
       || typeof candidate.showStatusBar !== 'boolean' || typeof candidate.scratchpadInBar !== 'boolean'
       || typeof candidate.syncAtStartup !== 'boolean') {

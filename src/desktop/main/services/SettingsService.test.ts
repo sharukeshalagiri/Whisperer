@@ -49,6 +49,7 @@ describe('SettingsService', () => {
       holdToTalk: false,
       language: '',
       launchAtLogin: false,
+      checkUpdatesAutomatically: false,
       microphoneId: '',
       onboardingCompleted: false,
       polish: false,
@@ -96,6 +97,13 @@ describe('SettingsService', () => {
     settings.rememberSessionUser('user-1');
     settings.setConnection('https://other.example.test', { accessToken: 'synthetic-access', refreshToken: 'synthetic-refresh' });
     expect(settings.getSessionUserId()).toBeNull();
+  });
+
+  test('keeps the background update check off until the user turns it on', () => {
+    const { directory, settings } = createSettings();
+    expect(settings.get().checkUpdatesAutomatically).toBe(false);
+    settings.update({ checkUpdatesAutomatically: true });
+    expect(new SettingsService({ directory, safeStorage: createSafeStorage() }).get().checkUpdatesAutomatically).toBe(true);
   });
 
   test('refuses to persist credentials using basic_text storage', () => {

@@ -195,6 +195,8 @@ export interface PublicSettings {
   onboardingCompleted: boolean
   /** Whether the application opens at operating-system login. */
   launchAtLogin: boolean
+  /** Whether the app checks the release feed in the background. Off by default: it contacts GitHub. */
+  checkUpdatesAutomatically: boolean
   /** The requested light, dark, or operating-system appearance mode. */
   theme: Theme
   /** Whether locally captured audio is retained after submission. */
@@ -228,6 +230,7 @@ export type PublicSettingsUpdate = Partial<
     | 'microphoneId'
     | 'onboardingCompleted'
     | 'launchAtLogin'
+    | 'checkUpdatesAutomatically'
     | 'theme'
     | 'retainAudio'
     | 'holdToTalk'
