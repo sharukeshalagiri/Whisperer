@@ -4,6 +4,12 @@ All notable changes to Whisperer are recorded here. The format follows [Keep a C
 
 ## [Unreleased]
 
+## [0.2.0-beta.2] - 2026-11-11
+
+### Fixed
+
+- Windows: on-device speech in Local mode never finished loading, so every Local mode dictation and meeting transcription timed out. The on-device server's parent watch blocked on a stdin read, which stalls native library loading on Windows; it now polls the pipe instead.
+
 ## [0.2.0-beta.1] - 2026-11-11
 
 First public beta. Installers are unsigned; see the [roadmap](docs/roadmap.md) for what has and has not been verified on each platform.
@@ -41,5 +47,6 @@ First public beta. Installers are unsigned; see the [roadmap](docs/roadmap.md) f
 - Every window is sandboxed with context isolation, and IPC is validated with Zod in both directions. Packaged builds flip Electron fuses.
 - No telemetry, crash reporting or analytics of any kind.
 
-[Unreleased]: https://github.com/sharukeshalagiri/Whisperer/compare/v0.2.0-beta.1...HEAD
+[Unreleased]: https://github.com/sharukeshalagiri/Whisperer/compare/v0.2.0-beta.2...HEAD
+[0.2.0-beta.2]: https://github.com/sharukeshalagiri/Whisperer/compare/v0.2.0-beta.1...v0.2.0-beta.2
 [0.2.0-beta.1]: https://github.com/sharukeshalagiri/Whisperer/releases/tag/v0.2.0-beta.1
