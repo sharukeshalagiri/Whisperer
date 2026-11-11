@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { CaptureGenerationController, isCapturing } from './lifecycle';
+import { CaptureGenerationController, isCapturing, retryAction } from './lifecycle';
 
 describe('CaptureGenerationController', () => {
   it('invalidates pending work after cancellation', () => {
@@ -31,3 +31,11 @@ describe('isCapturing', () => {
     expect(isCapturing('error')).toBe(false);
   });
 });
+
+describe('retryAction', () => {
+  it('resubmits the same take after a failed transcription instead of recording again', () => {
+    expect(retryAction('error', true)).toBe('resubmit')
+    expect(retryAction('error', false)).toBe('record')
+    expect(retryAction('idle', true)).toBe('record')
+  })
+})

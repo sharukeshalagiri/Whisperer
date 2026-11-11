@@ -33,3 +33,16 @@ export class CaptureGenerationController {
 export function isCapturing(phase: RecordingPhase): boolean {
   return phase === 'starting' || phase === 'recording' || phase === 'stopping';
 }
+
+/**
+ * What the pill's Retry does: resubmit the take whose transcription failed, or record a new one.
+ *
+ * Args:
+ *   phase: Current recorder phase.
+ *   hasFailedTake: Whether the audio of a failed transcription is still held in memory.
+ * Returns:
+ *   `resubmit` after a failed transcription, otherwise `record`.
+ */
+export function retryAction(phase: RecordingPhase, hasFailedTake: boolean): 'resubmit' | 'record' {
+  return phase === 'error' && hasFailedTake ? 'resubmit' : 'record'
+}

@@ -15,7 +15,7 @@ import type {
   RecordingSubmissionResult,
 } from '../../../shared/contracts';
 
-import { CaptureGenerationController, type RecordingPhase } from './lifecycle';
+import { CaptureGenerationController, retryAction, type RecordingPhase } from './lifecycle';
 import pcmWorkletUrl from './pcm-worklet.js?url&no-inline';
 import { AudioMeterEnvelope } from './meter';
 import { encodePcm16MonoWav, PCM16_BYTES_PER_SAMPLE, WAV_HEADER_BYTES } from './wav';
@@ -154,6 +154,8 @@ export function RecorderProvider({
   const controller = useRef(new CaptureGenerationController());
   const runtime = useRef<CaptureRuntime | null>(null);
   const phase = useRef<RecordingPhase>('idle');
+  /** The take whose transcription failed, kept in memory only so Retry can resubmit it. */
+  const failedTake = useRef<{ audio: Uint8Array; durationMs: number } | null>(null);
   const meter = useRef(new AudioMeterEnvelope());
   const pendingStartOptions = useRef<RecordingStartOptions>({ microphoneId: microphoneId ?? undefined });
   const limits = useRef({ maxDurationMs, maxAudioBytes });
@@ -276,6 +278,8 @@ export function RecorderProvider({
       });
     } catch (error) {
       if (controller.current.isCurrent(capture.generation)) {
+        // Keep the take, so Retry sends the same audio instead of asking the user to repeat it.
+        if (audio && audio.byteLength <= limits.current.maxAudioBytes) failedTake.current = { audio: audio.slice(), durationMs };
         report('error', { level: 0, message: errorMessage(error), error: errorMessage(error) });
       }
     } finally {
@@ -284,8 +288,32 @@ export function RecorderProvider({
     }
   }, [release, report, updateState]);
 
+  /** Sends the failed take again. On success it is forgotten; on failure it is kept for another try. */
+  const resubmitFailedTake = useCallback(async (): Promise<void> => {
+    const take = failedTake.current;
+    const submit = recordingBridge()?.recording?.submit;
+    if (!take || !submit) return;
+    report('processing', { level: 0, elapsedMs: take.durationMs, message: 'Transcribing…', error: null });
+    try {
+      const result = await submit({ audio: take.audio, durationMs: take.durationMs, filename: 'recording.wav', contentType: 'audio/wav' });
+      take.audio.fill(0);
+      failedTake.current = null;
+      await recordingBridge()?.recording.reportPhase({ capturePhase: 'submitted' });
+      phase.current = 'idle';
+      updateState({
+        phase: 'idle', level: 0, elapsedMs: take.durationMs, audioBytes: take.audio.byteLength, result: result ?? null,
+        message: result?.historyEntry.pasted ? 'Dictation completed and pasted.' : 'Dictation completed and copied.', error: null,
+      });
+    } catch (error) {
+      report('error', { level: 0, message: errorMessage(error), error: errorMessage(error) });
+    }
+  }, [report, updateState]);
+
   const startCapture = useCallback(async (options: RecordingStartOptions = {}) => {
     if (phase.current !== 'idle' && phase.current !== 'error') return;
+    // A new take replaces a failed one that was waiting for Retry.
+    failedTake.current?.audio.fill(0);
+    failedTake.current = null;
     const generation = controller.current.begin();
     meter.current.reset();
     const capture: CaptureRuntime = {
@@ -415,6 +443,8 @@ export function RecorderProvider({
   }, [requestStop]);
 
   const requestCancel = useCallback(async () => {
+    failedTake.current?.audio.fill(0);
+    failedTake.current = null;
     try {
       await recordingBridge()?.recording?.cancel?.();
     } catch (error) {
@@ -481,10 +511,11 @@ export function RecorderProvider({
     stop: requestStop,
     cancel: requestCancel,
     retry: async options => {
+      if (retryAction(phase.current, failedTake.current !== null) === 'resubmit') { await resubmitFailedTake(); return; }
       if (phase.current === 'error') report('idle', { error: null, message: 'Ready to record.' });
       await requestStart(options);
     },
-  }), [report, requestCancel, requestStart, requestStop, state]);
+  }), [report, requestCancel, requestStart, requestStop, resubmitFailedTake, state]);
 
   return <RecorderContext.Provider value={value}>{children}</RecorderContext.Provider>;
 }

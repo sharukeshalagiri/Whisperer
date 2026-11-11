@@ -1579,7 +1579,7 @@ class DesktopMainRuntime {
       // A cancellation may race with HTTP completion; never resurrect it as an error or copy result.
       if (submissionEpoch === this.recordingCancellationEpoch) {
         this.recording = { capturePhase: 'failed', error: safeMessage(error), startedAt: null, status: 'error' };
-        this.captureTarget = null;
+        // Keep the paste target: Retry resubmits this take, and paste re-checks focus first.
         this.publishState();
       }
       throw error;
