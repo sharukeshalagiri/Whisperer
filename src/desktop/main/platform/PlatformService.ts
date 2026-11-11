@@ -70,6 +70,12 @@ export interface CommandExecutor {
 export interface ElectronClipboard {
   /** Replace the text clipboard. Electron 44 commits the write asynchronously, so callers await it. */
   writeText(text: string): void | Promise<void>;
+  /**
+   * Replace the clipboard with a marker in a private, non-text format, so a plain-text read returns
+   * an empty string. On X11 a text write also takes the PRIMARY selection, which makes the target
+   * drop the selection the user made; a non-text write leaves it alone.
+   */
+  writeSentinel?(id: string): Promise<void>;
   /** Read the current plain-text clipboard without exposing it to the renderer. */
   readText(): string | Promise<string>;
 }
@@ -141,6 +147,8 @@ const MAC_ENTER = 'tell application "System Events" to key code 36\nreturn "sent
 const X11_UNAVAILABLE = 'X11 insertion requires the xdotool utility.';
 /** Targets read the clipboard asynchronously after the paste key; restoring sooner could paste the old text. */
 const CLIPBOARD_RESTORE_DELAY_MS = 750;
+/** How long an X11 capture's displaced clipboard text waits for the paste that restores it. */
+const X11_RESTORE_WINDOW_MS = 2 * 60_000;
 const WAYLAND_UNAVAILABLE = 'Wayland insertion is unavailable because no consent-based adapter is installed.';
 const INSERTION_UNAVAILABLE = 'Automatic insertion is unavailable on this platform.';
 const FOCUS_CHANGED = 'The focused window changed before text could be inserted.';
@@ -162,6 +170,8 @@ function isBundleId(value: string): boolean {
 
 /** Provide safe main-process adapters for permissions, focus capture, insertion and shortcuts. */
 export class PlatformService {
+  /** Clipboard text an X11 selection capture displaced, restored after the next paste. */
+  private pendingX11Restore: { text: string; at: number } | null = null;
   private registeredShortcut: string | null = null;
   /** Last observed System Events consent; null until probed so startup never triggers a prompt. */
   private automationGranted: boolean | null = null;
@@ -300,6 +310,7 @@ export class PlatformService {
     if (!target || target.platform !== this.dependencies.platform || !this.isValidTarget(target)) return null;
     const capability = await this.insertionCapability();
     if (!capability.available || !await this.isStillFocused(target)) return null;
+    if (target.platform === 'linux') return this.captureX11Selection(target);
     const priorClipboard = await this.dependencies.clipboard.readText();
     const sentinel = `whisperer-selection-${randomUUID()}`;
     await this.dependencies.clipboard.writeText(sentinel);
@@ -313,6 +324,44 @@ export class PlatformService {
     } finally {
       await this.dependencies.clipboard.writeText(priorClipboard);
     }
+  }
+
+  /**
+   * Capture an X11 selection with a non-text sentinel.
+   *
+   * A text sentinel would take the PRIMARY selection, and the target would then drop the
+   * selection it is about to copy. The private-format sentinel reads as empty text, so any copied
+   * text is a change, even text equal to the user's clipboard. After a successful capture the
+   * user's clipboard text is put back only after the replacement is pasted (insertText), because
+   * writing it now would clear the selection that the apply step checks again.
+   */
+  private async captureX11Selection(target: CaptureTarget): Promise<{ readonly text: string } | null> {
+    const clipboard = this.dependencies.clipboard;
+    if (!clipboard.writeSentinel) return null;
+    const prior = await clipboard.readText();
+    let captured = false;
+    try {
+      await clipboard.writeSentinel(`whisperer-selection-${randomUUID()}`);
+      const marker = await clipboard.readText();
+      if (!await this.sendCopy(target)) return null;
+      const selected = await this.waitForClipboardChange(marker);
+      if (!selected || !await this.isStillFocused(target)) return null;
+      captured = true;
+      const pending = this.pendingX11Restore;
+      if (!pending || Date.now() - pending.at > X11_RESTORE_WINDOW_MS) this.pendingX11Restore = { text: prior, at: Date.now() };
+      return { text: selected };
+    } catch {
+      return null;
+    } finally {
+      if (!captured) await clipboard.writeText(prior);
+    }
+  }
+
+  /** The clipboard text a recent X11 capture displaced, once; null when none is pending or it is stale. */
+  private takePendingX11Restore(): string | null {
+    const pending = this.pendingX11Restore;
+    this.pendingX11Restore = null;
+    return pending && Date.now() - pending.at <= X11_RESTORE_WINDOW_MS ? pending.text : null;
   }
 
   /**
@@ -366,8 +415,7 @@ export class PlatformService {
         const output = await this.dependencies.execute('/usr/bin/osascript', ['-e', MAC_SELECT_ALL, target.bundleId, target.processId], { timeout: 4000, shell: false });
         return outputLines(output.stdout).includes('sent');
       }
-      await this.dependencies.execute('xdotool', ['key', '--window', target.windowId, '--clearmodifiers', 'ctrl+a'], { timeout: 2000, shell: false });
-      return true;
+      return await this.sendX11Key(target, 'ctrl+a');
     } catch {
       return false;
     }
@@ -434,7 +482,8 @@ export class PlatformService {
     if (!this.isValidTarget(target)) return { inserted: false, copied: false, reason: `The saved ${this.targetPlatformName(target)} target is invalid.` };
     if (!await this.isStillFocused(target)) return { inserted: false, copied: false, reason: FOCUS_CHANGED };
 
-    const previous = await this.readClipboard();
+    // After an X11 capture the clipboard holds the copied selection; restore what the user had.
+    const previous = this.takePendingX11Restore() ?? await this.readClipboard();
     await this.dependencies.clipboard.writeText(text);
     try {
       const inserted = await this.sendPaste(target);
@@ -707,6 +756,19 @@ export class PlatformService {
     return null;
   }
 
+  /**
+   * Send one key chord to the captured X11 window as real (XTEST) input.
+   *
+   * GTK and other toolkits ignore synthetic XSendEvent keys (`xdotool key --window`), so the
+   * chord goes to the focused window, and only after the captured window is confirmed focused
+   * immediately before it.
+   */
+  private async sendX11Key(target: CaptureTarget, chord: string): Promise<boolean> {
+    if (!await this.isStillFocused(target)) return false;
+    await this.dependencies.execute('xdotool', ['key', '--clearmodifiers', chord], { timeout: 2000, shell: false });
+    return true;
+  }
+
   /** Send a copy command to a verified target without allowing mutable foreground focus to choose it. */
   private async sendCopy(target: CaptureTarget): Promise<boolean> {
     if (target.platform === 'win32') {
@@ -722,8 +784,7 @@ export class PlatformService {
       const output = await this.dependencies.execute('/usr/bin/osascript', ['-e', MAC_COPY, target.bundleId, target.processId], { timeout: 4000, shell: false });
       return outputLines(output.stdout).includes('sent');
     }
-    await this.dependencies.execute('xdotool', ['key', '--window', target.windowId, '--clearmodifiers', 'ctrl+c'], { timeout: 2000, shell: false });
-    return true;
+    return this.sendX11Key(target, 'ctrl+c');
   }
 
   /** Send the OS-specific paste after focus comparison, without a shell or code interpolation. */
@@ -741,8 +802,7 @@ export class PlatformService {
       const output = await this.dependencies.execute('/usr/bin/osascript', ['-e', MAC_PASTE, target.bundleId, target.processId], { timeout: 4000, shell: false });
       return outputLines(output.stdout).includes('sent');
     }
-    await this.dependencies.execute('xdotool', ['key', '--window', target.windowId, '--clearmodifiers', 'ctrl+v'], { timeout: 2000, shell: false });
-    return true;
+    return this.sendX11Key(target, 'ctrl+v');
   }
 
   /** Validate externally supplied target-shaped data before it reaches native arguments. */

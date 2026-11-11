@@ -268,7 +268,7 @@ test('uses the shared renderer capability shape for unavailable platform feature
   assert.equal(status.microphone.supported, true);
 });
 
-test('targets the captured X11 window rather than mutable foreground focus', async () => {
+test('pastes on X11 with real key events, only right after the captured window is confirmed focused', async () => {
   const { PlatformService } = loadPlatformService();
   const calls = [];
   const service = new PlatformService(createDependencies({
@@ -286,11 +286,33 @@ test('targets the captured X11 window rather than mutable foreground focus', asy
   const result = await service.insertText('finished dictation', target);
 
   assert.deepEqual(result, { inserted: true, copied: true });
-  assert.deepEqual(calls.at(-1), {
-    file: 'xdotool',
-    args: ['key', '--window', '123', '--clearmodifiers', 'ctrl+v'],
-    options: { timeout: 2000, shell: false },
-  });
+  // GTK and other toolkits ignore synthetic (XSendEvent) keys, so the paste goes through XTEST
+  // to the focused window, and focus is checked again immediately before it.
+  assert.deepEqual(calls.at(-1), { file: 'xdotool', args: ['key', '--clearmodifiers', 'ctrl+v'], options: { timeout: 2000, shell: false } });
+  assert.deepEqual(calls.at(-3).args, ['getwindowfocus']);
+  assert.deepEqual(calls.at(-2).args, ['getwindowpid', '123']);
+});
+
+test('does not paste on X11 when focus moves away just before the key', async () => {
+  const { PlatformService } = loadPlatformService();
+  const calls = [];
+  let focusChecks = 0;
+  const service = new PlatformService(createDependencies({
+    platform: 'linux',
+    environment: { DISPLAY: ':0' },
+    execute: async (file, args, options) => {
+      calls.push({ file, args, options });
+      if (args[0] === 'getwindowfocus') { focusChecks += 1; return { stdout: focusChecks >= 3 ? '999\n' : '123\n' }; }
+      if (args[0] === 'getwindowpid') return { stdout: '456\n' };
+      return { stdout: '' };
+    },
+  }));
+  const target = await service.captureTarget();
+
+  const result = await service.insertText('finished dictation', target);
+
+  assert.equal(result.inserted, false);
+  assert.equal(calls.some((call) => call.args[0] === 'key'), false);
 });
 
 test('captures an X11 selection only from the saved focused target and restores the clipboard', async () => {
@@ -302,6 +324,8 @@ test('captures an X11 selection only from the saved focused target and restores 
       writes: [],
       value: 'original clipboard',
       writeText(text) { this.writes.push(text); this.value = text; },
+      sentinels: [],
+      async writeSentinel(id) { this.sentinels.push(id); this.value = ''; },
       readText() { return this.value; },
     },
     execute: async (_file, args) => {
@@ -317,9 +341,8 @@ test('captures an X11 selection only from the saved focused target and restores 
   const selection = await service.captureSelection(target);
 
   assert.deepEqual(selection, { text: 'selected source' });
-  assert.equal(dependencies.clipboard.writes.length, 2);
-  assert.match(dependencies.clipboard.writes[0], /^whisperer-selection-/);
-  assert.equal(dependencies.clipboard.writes.at(-1), 'original clipboard');
+  // On X11 a clipboard write would take PRIMARY and clear the selection, so nothing is written.
+  assert.deepEqual(dependencies.clipboard.writes, []);
 });
 
 test('captures an X11 selection even when it already equals the clipboard', async () => {
@@ -331,6 +354,8 @@ test('captures an X11 selection even when it already equals the clipboard', asyn
       writes: [],
       value: 'selected source',
       writeText(text) { this.writes.push(text); this.value = text; },
+      sentinels: [],
+      async writeSentinel(id) { this.sentinels.push(id); this.value = ''; },
       readText() { return this.value; },
     },
     execute: async (_file, args) => {
@@ -343,10 +368,35 @@ test('captures an X11 selection even when it already equals the clipboard', asyn
   const service = new PlatformService(dependencies);
   const target = await service.captureTarget();
 
-  const selection = await service.captureSelection(target);
+  assert.deepEqual(await service.captureSelection(target), { text: 'selected source' });
+  assert.deepEqual(dependencies.clipboard.writes, []);
+});
 
-  assert.deepEqual(selection, { text: 'selected source' });
-  assert.equal(dependencies.clipboard.value, 'selected source');
+test('captures an X11 selection that a clipboard write would have cleared', async () => {
+  const { PlatformService } = loadPlatformService();
+  let selectionCleared = false;
+  const dependencies = createDependencies({
+    platform: 'linux',
+    environment: { DISPLAY: ':0' },
+    clipboard: {
+      writes: [],
+      value: 'older clipboard',
+      // Electron's writeText also takes X11 PRIMARY, and the target then drops its selection.
+      writeText(text) { this.writes.push(text); this.value = text; selectionCleared = true; },
+      async writeSentinel() { this.value = ''; },
+      readText() { return this.value; },
+    },
+    execute: async (_file, args) => {
+      if (args[0] === 'getwindowfocus') return { stdout: '123\n' };
+      if (args[0] === 'getwindowpid') return { stdout: '456\n' };
+      if (args[0] === 'key' && args.at(-1) === 'ctrl+c' && !selectionCleared) dependencies.clipboard.value = 'the user selection';
+      return { stdout: '' };
+    },
+  });
+  const service = new PlatformService(dependencies);
+  const target = await service.captureTarget();
+
+  assert.deepEqual(await service.captureSelection(target), { text: 'the user selection' });
 });
 
 test('restores a captured X11 target only from the still-focused review window', async () => {
@@ -359,6 +409,7 @@ test('restores a captured X11 target only from the still-focused review window',
       writes: [],
       value: 'original clipboard',
       writeText(text) { this.writes.push(text); this.value = text; },
+      async writeSentinel() { this.value = ''; },
       readText() { return this.value; },
     },
     execute: async (_file, args) => {
@@ -414,6 +465,8 @@ test('replaces only an unchanged X11 selection in its captured target', async ()
       writes: [],
       value: 'original clipboard',
       writeText(text) { this.writes.push(text); this.value = text; },
+      sentinels: [],
+      async writeSentinel(id) { this.sentinels.push(id); this.value = ''; },
       readText() { return this.value; },
     },
     execute: async (_file, args) => {
@@ -429,9 +482,10 @@ test('replaces only an unchanged X11 selection in its captured target', async ()
   const result = await service.replaceSelection('accepted replacement', target, { sourceText: 'selected source', reviewTarget: target });
 
   assert.deepEqual(result, { applied: true });
-  assert.equal(dependencies.clipboard.writes.length, 3);
-  assert.match(dependencies.clipboard.writes[0], /^whisperer-selection-/);
-  assert.deepEqual(dependencies.clipboard.writes.slice(-2), ['original clipboard', 'accepted replacement']);
+  assert.deepEqual(dependencies.clipboard.writes, ['accepted replacement']);
+  await new Promise((resolve) => setTimeout(resolve, 1200));
+  // The user's own clipboard comes back after the paste, not the copied selection.
+  assert.equal(dependencies.clipboard.value, 'original clipboard');
 });
 
 test('sends Enter through a fixed bounded X11 adapter without a shell', async () => {
@@ -473,6 +527,7 @@ function asyncClipboard(initial) {
   return {
     writes: [],
     value: initial,
+    async writeSentinel() { await new Promise((resolve) => setTimeout(resolve, 20)); this.value = ''; },
     writeText(text) {
       this.writes.push(text);
       return new Promise((resolve) => setTimeout(() => { this.value = text; resolve(); }, 20));
@@ -481,7 +536,7 @@ function asyncClipboard(initial) {
   };
 }
 
-test('captures an X11 selection when clipboard writes commit asynchronously', async () => {
+test('captures an X11 selection with an asynchronous clipboard and writes nothing', async () => {
   const { PlatformService } = loadPlatformService();
   const dependencies = createDependencies({
     platform: 'linux',
@@ -500,7 +555,7 @@ test('captures an X11 selection when clipboard writes commit asynchronously', as
   const selection = await service.captureSelection(target);
 
   assert.deepEqual(selection, { text: 'selected source' });
-  assert.equal(dependencies.clipboard.value, 'original clipboard');
+  assert.deepEqual(dependencies.clipboard.writes, []);
 });
 
 test('pastes on X11 only after the dictation is on the clipboard', async () => {

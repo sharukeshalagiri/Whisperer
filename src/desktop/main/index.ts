@@ -11,6 +11,7 @@ import {
   app,
   BrowserWindow,
   clipboard,
+  ClipboardItem,
   dialog,
   globalShortcut,
   ipcMain,
@@ -210,7 +211,12 @@ class DesktopMainRuntime {
     this.storeRecoveredFrom = opened.recovered;
     if (opened.recovered) this.logger.warn('The local database was damaged; it was moved aside and a new one was created.');
     this.platform = new PlatformService({
-      clipboard,
+      clipboard: {
+        readText: () => clipboard.readText(),
+        writeText: (text) => clipboard.writeText(text),
+        // A private, non-text format: on X11 it leaves the target's PRIMARY selection alone.
+        writeSentinel: (id) => clipboard.write([new ClipboardItem({ 'web application/x-whisperer-sentinel': id })]),
+      },
       environment: process.env,
       execute: async (file, args, options) => {
         const result = await execFileAsync(file, [...args], options);
