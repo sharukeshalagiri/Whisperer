@@ -33,7 +33,7 @@ Run the checks that cover your change before you open a pull request. CI runs al
 make desktop-lint     # TypeScript type checks and ESLint
 make desktop-test     # Vitest and node:test suites
 make desktop-build    # production build of main, preload and renderer
-make api-lint         # Ruff and mypy --strict
+make api-lint         # Ruff, and mypy --strict for Linux, macOS and Windows
 make api-test         # pytest
 make api-contract     # regenerate openapi.json and the TypeScript client, fail if stale
 make stack-config     # validate every Compose stack

@@ -318,9 +318,12 @@ def test_meeting_questions_require_device_auth_and_an_enabled_model(
     """
     client, _, upstream, _ = local
     identifier = str(uuid4())
-    assert client.post(
-        f"/v1/meetings/{identifier}/questions", json={"question": "Anything?"}
-    ).status_code == 401
+    assert (
+        client.post(
+            f"/v1/meetings/{identifier}/questions", json={"question": "Anything?"}
+        ).status_code
+        == 401
+    )
     response = client.post(
         f"/v1/meetings/{identifier}/questions",
         headers=_auth(),

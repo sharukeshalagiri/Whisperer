@@ -151,7 +151,7 @@ Without `STACK`, `make stack-up` picks `apple` on an Apple Silicon Mac, `nvidia`
 make desktop-lint     # TypeScript type checks and ESLint with zero warnings
 make desktop-test     # Vitest and node:test
 make desktop-build    # production build
-make api-lint         # Ruff and mypy --strict
+make api-lint         # Ruff, and mypy --strict for Linux, macOS and Windows
 make api-test         # pytest
 make api-contract     # regenerate openapi.json and the client, fail if stale
 make stack-config     # validate every Compose stack

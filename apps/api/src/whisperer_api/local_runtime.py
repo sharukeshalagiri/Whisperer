@@ -398,47 +398,62 @@ def wait_for_parent_exit(
             sleep(_PARENT_POLL_SECONDS)
 
 
-def _windows_pipe_peek(stdin: IO[bytes]) -> PipePeek | None:
-    """Build a non-blocking ``PeekNamedPipe`` probe for stdin on Windows.
+if sys.platform == "win32":
 
-    Args:
-        stdin: Binary stdin.
+    def _windows_pipe_peek(stdin: IO[bytes]) -> PipePeek | None:
+        """Build a non-blocking ``PeekNamedPipe`` probe for stdin on Windows.
 
-    Returns:
-        The probe, or None off Windows or when stdin is not a pipe.
-    """
-    if sys.platform != "win32":
+        Args:
+            stdin: Binary stdin.
+
+        Returns:
+            The probe, or None when stdin is not a pipe.
+        """
+        import ctypes
+        import msvcrt
+        from ctypes import wintypes
+
+        try:
+            handle = msvcrt.get_osfhandle(stdin.fileno())
+        except (OSError, ValueError):
+            return None
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        peek_named_pipe = kernel32.PeekNamedPipe
+        peek_named_pipe.argtypes = [
+            wintypes.HANDLE,
+            wintypes.LPVOID,
+            wintypes.DWORD,
+            wintypes.LPVOID,
+            ctypes.POINTER(wintypes.DWORD),
+            wintypes.LPVOID,
+        ]
+        peek_named_pipe.restype = wintypes.BOOL
+
+        def peek() -> int | None:
+            available = wintypes.DWORD(0)
+            if peek_named_pipe(handle, None, 0, None, ctypes.byref(available), None):
+                return int(available.value)
+            return None
+
+        if peek() is None and ctypes.get_last_error() != _ERROR_BROKEN_PIPE:
+            # Not a pipe, for example a console or a file: a blocking read is safe there.
+            return None
+        return peek
+
+
+else:
+
+    def _windows_pipe_peek(stdin: IO[bytes]) -> PipePeek | None:
+        """Return None: ``PeekNamedPipe`` exists only on Windows.
+
+        Args:
+            stdin: Binary stdin (unused off Windows).
+
+        Returns:
+            None, so the caller keeps the blocking read.
+        """
+        del stdin
         return None
-    import ctypes
-    import msvcrt
-    from ctypes import wintypes
-
-    try:
-        handle = msvcrt.get_osfhandle(stdin.fileno())
-    except (OSError, ValueError):
-        return None
-    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
-    peek_named_pipe = kernel32.PeekNamedPipe
-    peek_named_pipe.argtypes = [
-        wintypes.HANDLE,
-        wintypes.LPVOID,
-        wintypes.DWORD,
-        wintypes.LPVOID,
-        ctypes.POINTER(wintypes.DWORD),
-        wintypes.LPVOID,
-    ]
-    peek_named_pipe.restype = wintypes.BOOL
-
-    def peek() -> int | None:
-        available = wintypes.DWORD(0)
-        if peek_named_pipe(handle, None, 0, None, ctypes.byref(available), None):
-            return int(available.value)
-        return None
-
-    if peek() is None and ctypes.get_last_error() != _ERROR_BROKEN_PIPE:
-        # Not a pipe, for example a console or a file: a blocking read is safe there.
-        return None
-    return peek
 
 
 class LocalServer:

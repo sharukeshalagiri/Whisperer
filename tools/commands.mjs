@@ -252,7 +252,10 @@ function apiSetup() {
 function apiLint() {
   apiSetup();
   run('uv', ['run', '--locked', '--all-packages', 'ruff', 'check', 'apps/api']);
-  run('uv', ['run', '--locked', '--all-packages', 'mypy', 'apps/api/src']);
+  // Type-check as every shipped platform: mypy only sees the host's sys.platform branches.
+  for (const platform of ['linux', 'darwin', 'win32']) {
+    run('uv', ['run', '--locked', '--all-packages', 'mypy', '--platform', platform, 'apps/api/src']);
+  }
 }
 
 /**
