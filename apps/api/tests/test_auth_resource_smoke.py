@@ -547,11 +547,11 @@ def test_stream_polls_redeem_in_short_transactions(tmp_path: Path) -> None:
     assert pending is not None
     assert pending.status == "pending"
     assert pool.checkedout() == 0
-    with client:
-        with next(dependencies.database.session()) as session:
-            state = session.get_one(DeviceAuthorization, device_code).state
-        page = client.get("/auth/callback", params={"code": "code", "state": state}).text
-        client.post("/auth/approve", data={"approval": _approval_token(page)})
+    # Plain requests: the schema exists, and the app's lifespan may only run once per test.
+    with next(dependencies.database.session()) as session:
+        state = session.get_one(DeviceAuthorization, device_code).state
+    page = client.get("/auth/callback", params={"code": "code", "state": state}).text
+    client.post("/auth/approve", data={"approval": _approval_token(page)})
     complete = redeem_in_transaction(dependencies, device_code, verifier)
     assert complete is not None
     assert complete.status == "complete"
