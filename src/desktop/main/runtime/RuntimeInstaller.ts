@@ -88,6 +88,11 @@ export class RuntimeInstaller {
   /** Args: options supplies every side effect so the installer runs without Electron. */
   constructor(readonly options: RuntimeInstallerOptions) {}
 
+  /** Forgets the installed runtime so the next setup reinstalls it. Its files are replaced then. */
+  invalidate(): void {
+    rmSync(join(this.options.root, 'envs', this.key(), MARKER), { force: true });
+  }
+
   /** Returns the complete runtime matching this build, or null when setup is needed. Never downloads. */
   async installed(): Promise<RuntimeLocation | null> {
     const key = this.key();

@@ -290,6 +290,20 @@ describe('LocalServerService', () => {
     expect(h.children[0]!.signals.length).toBeGreaterThan(0);
   });
 
+  test('after repeated startup failures the runtime is marked for reinstall', async () => {
+    const invalidate = vi.fn();
+    const h = harness();
+    (h.service as unknown as { options: { installer: { invalidate?: () => void } } }).options.installer.invalidate = invalidate;
+    for (let attempt = 1; attempt <= 2; attempt += 1) {
+      void h.service.restart();
+      await vi.waitFor(() => expect(h.children).toHaveLength(attempt));
+      h.children[attempt - 1]!.exit(1);
+      await until(h, 'failed');
+    }
+    expect(invalidate).toHaveBeenCalledTimes(1);
+    expect(h.service.status().message).toMatch(/Set up on-device mode again to repair it/);
+  });
+
   test('a server error event fails startup with its message', async () => {
     const h = harness();
     void h.service.start();

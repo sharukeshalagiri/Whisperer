@@ -25,7 +25,7 @@ export type SpawnChild = (file: string, args: readonly string[], options: { cwd:
 
 /** Configures the supervisor of the owned on-device API server. */
 export interface LocalServerOptions {
-  installer: Pick<RuntimeInstaller, 'installed' | 'install'>;
+  installer: Pick<RuntimeInstaller, 'installed' | 'install'> & { invalidate?: () => void };
   spawn: SpawnChild;
   /** Loopback fetch; never used for anything except the owned child. */
   fetch: (url: string, init?: RequestInit) => Promise<Response>;
@@ -82,6 +82,7 @@ export class LocalServerService {
   private verified: LocalConnection | null = null;
   private generation = 0;
   private restarts = 0;
+  private startupFailures = 0;
   private startFlight: Promise<void> | null = null;
   private installController: AbortController | null = null;
 
@@ -325,6 +326,7 @@ export class LocalServerService {
     }
     if (launch.timer) clearTimeout(launch.timer);
     this.verified = { host, token: launch.token, generation: launch.generation };
+    this.startupFailures = 0;
     this.update({ state: 'ready', stage: null, message: 'Running on this device', port: launch.port, progress: null, canRetry: true });
     await this.refreshInference();
     launch.settle(true);
@@ -345,7 +347,17 @@ export class LocalServerService {
       void this.start();
       return;
     }
-    const message = wasReady ? 'Local server stopped unexpectedly' : launch.error ?? `The on-device server exited during startup (code ${code ?? 'none'}).`;
+    let message = wasReady ? 'Local server stopped unexpectedly' : launch.error ?? `The on-device server exited during startup (code ${code ?? 'none'}).`;
+    if (!wasReady) {
+      // Repeated startup failures point at a damaged runtime (a deleted package, a quarantined
+      // DLL). Mark it for reinstall so the next setup repairs it instead of failing again.
+      this.startupFailures += 1;
+      if (this.startupFailures >= 2) {
+        this.startupFailures = 0;
+        this.options.installer.invalidate?.();
+        message = `${message} The on-device runtime may be damaged. Set up on-device mode again to repair it.`;
+      }
+    }
     this.fail(launch, wasReady ? null : this.current.stage ?? 'launch', message);
   }
 
