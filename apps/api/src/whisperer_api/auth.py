@@ -9,7 +9,7 @@ import secrets
 from datetime import UTC, datetime, timedelta
 from typing import Any, Protocol, cast
 from urllib.parse import urlencode
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import httpx
 from authlib.integrations.httpx_client import AsyncOAuth2Client
@@ -18,7 +18,7 @@ from joserfc import jwt
 from joserfc.errors import JoseError
 from joserfc.jwk import KeySet, OctKey
 from joserfc.jwt import JWTClaimsRegistry
-from sqlalchemy import select, update
+from sqlalchemy import or_, select, update
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session
 
@@ -259,12 +259,13 @@ class SessionService:
         self._settings = settings
         self._clock = clock
 
-    def issue(self, session: Session, user: User) -> RefreshResponse:
+    def issue(self, session: Session, user: User, family_id: str | None = None) -> RefreshResponse:
         """Issue a short-lived app access token and hashed refresh session.
 
         Args:
             session: Open database session receiving refresh state.
             user: Locally linked OIDC user.
+            family_id: Sign-in the new session rotates from, or None for a new sign-in.
 
         Returns:
             New access and refresh credential pair.
@@ -276,6 +277,7 @@ class SessionService:
             user_id=user.id,
             created_at=now,
             expires_at=now + timedelta(days=self._settings.refresh_token_days),
+            family_id=family_id or str(uuid4()),
         )
         session.add(refresh_session)
         session.flush()
@@ -298,11 +300,24 @@ class SessionService:
         stored = session.scalar(
             select(RefreshSession).where(
                 RefreshSession.token_hash == self._token_hash(refresh_token),
-                RefreshSession.revoked_at.is_(None),
                 RefreshSession.expires_at > now,
             )
         )
         if stored is None:
+            return None
+        family = stored.family_id or stored.id
+        if stored.revoked_at is not None:
+            # A rotated token came back: it leaked. End every session of this sign-in, which also
+            # invalidates their access tokens through the per-request session check.
+            session.execute(
+                update(RefreshSession)
+                .where(
+                    or_(RefreshSession.family_id == family, RefreshSession.id == family),
+                    RefreshSession.revoked_at.is_(None),
+                )
+                .values(revoked_at=now)
+                .execution_options(synchronize_session=False)
+            )
             return None
         user = session.get(User, stored.user_id)
         if user is None:
@@ -319,7 +334,7 @@ class SessionService:
         )
         if claimed.rowcount != 1:
             return None
-        return user, self.issue(session, user)
+        return user, self.issue(session, user, family)
 
     def revoke(self, session: Session, refresh_token: str) -> None:
         """Locally revoke an opaque refresh token without revealing its validity.

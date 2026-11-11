@@ -759,6 +759,8 @@ def create_app(
         _remote_only(dependencies)
         result = dependencies.sessions.refresh(session, request_body.refresh_token)
         if result is None:
+            # Keep a reuse revocation even though the request fails.
+            session.commit()
             raise HTTPException(401, "The refresh session is invalid or expired.")
         _, response = result
         return response

@@ -165,6 +165,8 @@ class RefreshSession(Base):
     expires_at: Mapped[datetime] = mapped_column(UtcDateTime(), nullable=False)
     revoked_at: Mapped[datetime | None] = mapped_column(UtcDateTime())
     created_at: Mapped[datetime] = mapped_column(UtcDateTime(), nullable=False)
+    # Every rotation of one sign-in shares a family, so reuse of a rotated token ends them all.
+    family_id: Mapped[str | None] = mapped_column(String(36), index=True)
     user: Mapped[User] = relationship(back_populates="refresh_sessions")
 
 
@@ -295,6 +297,15 @@ def record_tombstone(
 # existing SQLite files in order. Every statement is a module constant, never request input.
 _COUNTER = "INTEGER NOT NULL DEFAULT 0"
 _ADDED_COLUMNS: tuple[tuple[str, str, tuple[str, ...]], ...] = (
+    (
+        "api_refresh_sessions",
+        "family_id",
+        (
+            "ALTER TABLE api_refresh_sessions ADD COLUMN family_id VARCHAR(36)",
+            "CREATE INDEX IF NOT EXISTS ix_api_refresh_sessions_family_id"
+            " ON api_refresh_sessions (family_id)",
+        ),
+    ),
     (
         "api_device_authorizations",
         "approval_token_hash",

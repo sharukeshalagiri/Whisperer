@@ -500,3 +500,33 @@ def test_approval_token_is_single_use_and_unguessable(tmp_path: Path) -> None:
 def test_sign_in_code_matches_the_desktop_derivation() -> None:
     """The desktop derives the same code; this vector is pinned in its tests too."""
     assert sign_in_code("3f2b8c1e-5d4a-4e6b-9c7d-0a1b2c3d4e5f") == "YC5R-3KNG"
+
+
+def test_replaying_a_rotated_refresh_token_revokes_the_whole_session(tmp_path: Path) -> None:
+    """Reuse of a rotated refresh token means it leaked: end every session derived from it."""
+    client, dependencies, _, _ = _phishing_setup(tmp_path)
+    with client:
+        with next(dependencies.database.session()) as session:
+            user = User(
+                issuer="https://identity.example.test",
+                subject="s",
+                created_at=dependencies.clock.now(),
+            )
+            session.add(user)
+            session.flush()
+            first = dependencies.sessions.issue(session, user)
+            session.commit()
+        rotated = client.post("/v1/auth/refresh", json={"refresh_token": first.refresh_token})
+        assert rotated.status_code == 200
+        successor = rotated.json()
+        headers = {"Authorization": f"Bearer {successor['accessToken']}"}
+        assert client.get("/v1/notes", headers=headers).status_code == 200
+        replay = client.post("/v1/auth/refresh", json={"refresh_token": first.refresh_token})
+        assert replay.status_code == 401
+        assert (
+            client.post(
+                "/v1/auth/refresh", json={"refresh_token": successor["refreshToken"]}
+            ).status_code
+            == 401
+        )
+        assert client.get("/v1/notes", headers=headers).status_code == 401
