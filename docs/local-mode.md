@@ -21,6 +21,8 @@ The installer is small. It carries the API source and its lock file and nothing 
 | `istupakov/parakeet-tdt-0.6b-v3-onnx` | about 670 MB | 25 European languages |
 | `istupakov/whisper-base-onnx` | about 108 MB | Multilingual |
 
+Parakeet detects the spoken language by itself and ignores the language chosen in Settings; Whisper uses that choice as a hint.
+
 Speech can use an HTTP endpoint instead of a downloaded model, in the same Inference section.
 
 ## Where your audio and text go

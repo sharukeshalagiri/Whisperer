@@ -242,7 +242,7 @@ export function OnboardingScreen({ state, onComplete }: OnboardingScreenProps): 
       ? 'You can continue now. Until input access is allowed, Whisperer copies dictation to the clipboard instead of inserting it.'
       : 'Allow microphone and input access to dictate into the apps you use.',
     'Choose a microphone, then speak to check that Whisperer can hear you.',
-    'Whisperer transcribes the language you choose. You can change it later in Settings.',
+    'Whisperer sends the language you choose to the speech model as a hint. The default on-device Parakeet model detects the language by itself. You can change this later in Settings.',
     testShortcut ? (
       <>
         We recommend the <ShortcutChips value={testShortcut} platform={state.platform} />{' '}

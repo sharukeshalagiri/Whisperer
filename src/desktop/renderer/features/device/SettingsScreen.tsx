@@ -527,6 +527,10 @@ export function SettingsScreen({
               </option>
             ))}
           </select>
+          <p>
+            Sent to the speech model as a hint. The on-device Parakeet model detects the language by itself and
+            ignores it.
+          </p>
         </EditorDialog>
       ) : null}
       {dialog === 'signout' ? (
