@@ -57,6 +57,17 @@ class LocalAuthenticator:
         digest = hmac.new(self._token, nonce.encode(), hashlib.sha256).digest()
         return base64.urlsafe_b64encode(digest).rstrip(b"=").decode()
 
+    def bearer_matches(self, token: str) -> bool:
+        """Compare a bearer credential with the boot token in constant time.
+
+        Args:
+            token: Bearer credential from the request.
+
+        Returns:
+            Whether it is the boot token.
+        """
+        return hmac.compare_digest(token.encode(), self._token)
+
     def user_from_bearer(self, session: Session, token: str) -> User | None:
         """Resolve the device user when the bearer is the boot token.
 

@@ -84,6 +84,7 @@ from whisperer_api.metrics_schemas import (
 )
 from whisperer_api.persistence import Database, DeviceAuthorization, Note, RefreshSession, User
 from whisperer_api.preflight import PreflightResult, PreflightService
+from whisperer_api.request_limits import RequestLimitMiddleware
 from whisperer_api.resources import (
     DuplicateDictionaryError,
     NoteChangedError,
@@ -496,6 +497,13 @@ def create_app(
     session_dependency = Annotated[Session, Depends(dependencies.get_session)]
     if local is not None:
         _guard_loopback(app, local)
+    local_auth = dependencies.local_auth
+    app.add_middleware(
+        RequestLimitMiddleware,
+        bearer_plausible=local_auth.bearer_matches
+        if local_auth is not None
+        else dependencies.sessions.access_token_plausible,
+    )
 
     @app.exception_handler(HTTPException)
     async def http_problem(request: Request, error: HTTPException) -> JSONResponse:

@@ -21,6 +21,8 @@ flowchart LR
 
 API authorization resolves the local user from the application's revocable bearer session. Every resource query is owner scoped. The renderer receives no credentials. Gateway credentials and upstream OIDC credentials remain in the backend.
 
+**Request limits.** Before any body is read, a `POST`, `PUT` or `PATCH` to a `/v1/*` route needs a Bearer token that passes a signature and expiry check (except `/v1/auth/refresh`), so anonymous bodies get 401 and are never parsed. Bodies are capped at 26 MiB for the two audio upload routes, 64 MiB for `/v1/sync` and 4 MiB everywhere else, and a larger body gets 413. A reverse proxy in front of the API can set the same limits.
+
 ## Dictation and dictionary
 
 `POST /v1/transcriptions` accepts bounded multipart audio and returns an inference result without creating a server transcript row. Existing result fields remain available. `dictionaryReplacements` reports the actual substitution count.
