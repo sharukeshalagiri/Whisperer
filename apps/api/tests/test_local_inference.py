@@ -289,3 +289,28 @@ def test_transport_failures_become_value_errors(failure: httpx.HTTPError) -> Non
         asyncio.run(speech.transcribe(b"a", "a.wav", "audio/wav", None))
     with pytest.raises(ValueError):
         asyncio.run(llm.complete("s", "u"))
+
+
+def test_model_loading_turns_onnxruntime_telemetry_off_first(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """onnxruntime ships telemetry; it must be off before any model session exists."""
+    import sys
+    import types
+
+    from whisperer_api import inference
+
+    calls: list[str] = []
+    fake_ort = types.ModuleType("onnxruntime")
+    fake_ort.disable_telemetry_events = lambda: calls.append("telemetry off")  # type: ignore[attr-defined]
+    fake_asr = types.ModuleType("onnx_asr")
+    fake_asr.load_model = lambda *args, **kwargs: calls.append("model loaded") or object()  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "onnxruntime", fake_ort)
+    monkeypatch.setitem(sys.modules, "onnx_asr", fake_asr)
+    from whisperer_api.model_store import CATALOG
+
+    spec = CATALOG["istupakov/whisper-base-onnx"]
+
+    inference.load_onnx_asr(spec, Path())
+
+    assert calls == ["telemetry off", "model loaded"]

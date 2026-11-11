@@ -534,6 +534,9 @@ def load_onnx_asr(spec: ModelSpec, path: Path) -> Recognizer:
     Returns:
         Loaded recognizer.
     """
+    # onnxruntime's official builds send usage telemetry (seen on Linux as DNS lookups of a
+    # Microsoft events host). Turn it off before any session exists: Whisperer ships none.
+    import_module("onnxruntime").disable_telemetry_events()
     onnx_asr = import_module("onnx_asr")
     recognizer: Recognizer = onnx_asr.load_model(
         spec.model_type,
