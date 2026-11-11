@@ -22,6 +22,8 @@ Every release follows one scheme, which the desktop update check depends on.
 
 On GitHub, pushing a `v<version>` tag runs `.github/workflows/release.yml`. It checks that the tag matches `package.json`, builds the Linux `.deb` on Ubuntu, the Windows NSIS installer on Windows and both macOS `.dmg` files on an Apple Silicon runner, and checks every name against `releases.ts`. It then creates a **draft** release titled `Whisperer <version>` with the installers, a `SHA256SUMS` file and notes taken from that version's `CHANGELOG.md` section, plus a line saying the builds are unsigned. A draft is invisible to the update check until someone publishes it on GitHub.
 
+To test installers before tagging, run the workflow by hand (Actions › Release › Run workflow, or `gh workflow run release.yml --ref main`). A manual run builds the same installers and uploads them, with a `SHA256SUMS` artifact, as workflow artifacts only. It creates no tag and no release.
+
 ```sh
 git tag v0.2.0-beta.1 && git push origin v0.2.0-beta.1
 ```

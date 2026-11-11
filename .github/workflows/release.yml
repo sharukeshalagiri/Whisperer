@@ -2,10 +2,13 @@ name: Release
 
 # A v* tag builds unsigned installers on GitHub-hosted runners and attaches them, with
 # SHA256SUMS, to a draft release. Publishing the draft stays a manual step.
+# A manual run (workflow_dispatch) builds the same installers as workflow artifacts only,
+# for testing before a tag: it creates no tag and no release.
 on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -37,6 +40,7 @@ jobs:
           node-version: 22.18.0
           cache: npm
       - name: Check that the tag matches package.json
+        if: github.event_name == 'push'
         shell: bash
         run: |
           version="$(node -p "require('./package.json').version")"
@@ -72,7 +76,26 @@ jobs:
           path: dist/${{ matrix.pattern }}
           if-no-files-found: error
 
+  test-checksums:
+    if: github.event_name == 'workflow_dispatch'
+    needs: build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: installers
+          merge-multiple: true
+      - name: Write checksums
+        working-directory: installers
+        run: sha256sum -- * > SHA256SUMS && cat SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SHA256SUMS
+          path: installers/SHA256SUMS
+          if-no-files-found: error
+
   draft-release:
+    if: github.event_name == 'push'
     needs: build
     runs-on: ubuntu-24.04
     permissions:
