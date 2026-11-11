@@ -106,6 +106,25 @@ describe('SettingsService', () => {
     expect(new SettingsService({ directory, safeStorage: createSafeStorage() }).get().checkUpdatesAutomatically).toBe(true);
   });
 
+  test('recovers settings from the last good copy when settings.json is damaged', () => {
+    const { directory, settings } = createSettings();
+    settings.update({ language: 'fr' });
+    settings.update({ autoPaste: false });
+    writeFileSync(join(directory, 'settings.json'), Buffer.alloc(302, 0));
+
+    const restarted = new SettingsService({ directory, safeStorage: createSafeStorage() });
+    expect(restarted.get().language).toBe('fr');
+    expect(restarted.get().autoPaste).toBe(false);
+  });
+
+  test('a backup never brings back a session the user signed out of', () => {
+    const { directory, settings } = createSettings();
+    settings.setConnection('https://api.example.test', { accessToken: 'synthetic-access', refreshToken: 'synthetic-refresh' });
+    settings.setSession(null);
+    writeFileSync(join(directory, 'settings.json'), Buffer.alloc(64, 0));
+    expect(new SettingsService({ directory, safeStorage: createSafeStorage() }).get().authenticated).toBe(false);
+  });
+
   test('refuses to persist credentials using basic_text storage', () => {
     const { directory, settings } = createSettings('basic_text');
     settings.setConnection('https://api.example.test', { accessToken: 'access-secret', refreshToken: 'refresh-secret' });

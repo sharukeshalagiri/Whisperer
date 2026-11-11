@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
+import { closeSync, copyFileSync, existsSync, fsyncSync, mkdirSync, openSync, readFileSync, renameSync, unlinkSync, writeSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { randomUUID } from 'node:crypto';
@@ -363,6 +363,16 @@ export class SettingsService {
   /** The account the saved session last verified as, or null. */
   getSessionUserId(): string | null { return this.session ? this.sessionUserId : null; }
 
+  /** Copies the settings file just written to `.bak`, when it reads back as valid JSON. */
+  private backupLastGoodFile(): void {
+    try {
+      JSON.parse(readFileSync(this.file, 'utf8'));
+      copyFileSync(this.file, `${this.file}.bak`);
+    } catch {
+      // No current file, or a damaged one: keep the previous backup.
+    }
+  }
+
   /** Loads new-format state, falling back to the legacy connection file one time. */
   private load(): void {
     const legacyFile = join(this.options.directory, 'connection.json');
@@ -373,8 +383,14 @@ export class SettingsService {
     try {
       saved = JSON.parse(readFileSync(source, 'utf8')) as PersistedSettings;
     } catch {
-      this.options.logger?.warn('Settings file was unreadable; starting with defaults');
-      return;
+      // A power loss can leave the file empty or full of NUL bytes; fall back to the last good copy.
+      try {
+        saved = JSON.parse(readFileSync(`${this.file}.bak`, 'utf8')) as PersistedSettings;
+        this.options.logger?.warn('Settings file was unreadable; restored the last good copy');
+      } catch {
+        this.options.logger?.warn('Settings file was unreadable; starting with defaults');
+        return;
+      }
     }
 
     try {
@@ -569,8 +585,17 @@ export class SettingsService {
     mkdirSync(this.options.directory, { recursive: true, mode: 0o700 });
     const temporary = `${this.file}.tmp`;
     try {
-      writeFileSync(temporary, JSON.stringify(saved, null, 2), { encoding: 'utf8', mode: 0o600 });
+      // Flush to disk before the rename, so a power loss leaves either the old or the new file.
+      const handle = openSync(temporary, 'w', 0o600);
+      try {
+        writeSync(handle, JSON.stringify(saved, null, 2), null, 'utf8');
+        fsyncSync(handle);
+      } finally {
+        closeSync(handle);
+      }
       renameSync(temporary, this.file);
+      // The backup always matches the current settings, so a sign-out is never undone by it.
+      this.backupLastGoodFile();
     } finally {
       if (existsSync(temporary)) unlinkSync(temporary);
     }
