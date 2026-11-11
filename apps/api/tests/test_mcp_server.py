@@ -624,6 +624,27 @@ async def test_tools_list_exposes_exactly_three_read_only_tools(mounted: Mounted
     assert limits["ask_meeting"]["question"]["maxLength"] == 2_000
 
 
+async def test_write_attempts_are_refused(mounted: Mounted) -> None:
+    """There is no write tool: calling one fails and changes nothing.
+
+    Args:
+        mounted: Composed application.
+
+    Returns:
+        None.
+    """
+    async with run_asgi_lifespan(mounted.app), _client(mounted.app, _token()) as client:
+        before = await client.call_tool("list_meetings", {"limit": 20})
+        for name, arguments in (
+            ("delete_meeting", {"meeting_id": str(uuid4())}),
+            ("update_meeting", {"meeting_id": str(uuid4()), "title": "changed"}),
+        ):
+            result = await client.call_tool(name, arguments, raise_on_error=False)
+            assert result.is_error
+        after = await client.call_tool("list_meetings", {"limit": 20})
+    assert after.structured_content == before.structured_content
+
+
 async def test_list_meetings_returns_owned_metadata(mounted: Mounted) -> None:
     """Return only the caller's meetings, newest first, without content.
 

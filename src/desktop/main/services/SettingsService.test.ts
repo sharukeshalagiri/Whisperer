@@ -125,6 +125,23 @@ describe('SettingsService', () => {
     expect(new SettingsService({ directory, safeStorage: createSafeStorage() }).get().authenticated).toBe(false);
   });
 
+  test('opens settings written by 0.2.0-beta.1 with every value kept', () => {
+    const { directory, settings } = createSettings();
+    settings.update({ language: 'de', autoPaste: false, launchAtLogin: true });
+    settings.setConnectionMode('device');
+    // Strip the fields added after beta.1, as a beta.1 install would have written the file.
+    const file = join(directory, 'settings.json');
+    const beta1 = JSON.parse(readFileSync(file, 'utf8')) as Record<string, unknown>;
+    delete beta1.sessionUserId;
+    delete beta1.checkUpdatesAutomatically;
+    writeFileSync(file, JSON.stringify(beta1));
+    rmSync(`${file}.bak`, { force: true });
+
+    const upgraded = new SettingsService({ directory, safeStorage: createSafeStorage() }).get();
+    expect(upgraded).toMatchObject({ language: 'de', autoPaste: false, launchAtLogin: true, connectionMode: 'device', checkUpdatesAutomatically: false });
+    expect(upgraded.shortcutBindings).toEqual(settings.get().shortcutBindings);
+  });
+
   test('refuses to persist credentials using basic_text storage', () => {
     const { directory, settings } = createSettings('basic_text');
     settings.setConnection('https://api.example.test', { accessToken: 'access-secret', refreshToken: 'refresh-secret' });

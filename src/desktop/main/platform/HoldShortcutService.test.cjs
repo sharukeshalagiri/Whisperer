@@ -148,3 +148,34 @@ test('activates a modifier-only chord and lets a larger chord upgrade without re
 
   assert.deepEqual(calls, ['hold', 'toggle', 'release']);
 });
+
+test('ordinary typing is never kept, reported or logged', () => {
+  const { HoldShortcutService } = loadModule(path.join(__dirname, 'HoldShortcutService.ts'));
+  const hook = createHook();
+  const service = new HoldShortcutService({
+    platform: 'win32',
+    environment: {},
+    isInstalled: () => true,
+    createNative: () => ({ hook, keys: { Space: 57 } }),
+  });
+  let callbacks = 0;
+  service.register('CommandOrControl+Shift+Space', { onStart: () => { callbacks += 1; }, onStop: () => { callbacks += 1; } }, true);
+  const logged = [];
+  const originals = {};
+  for (const method of ['log', 'info', 'warn', 'error', 'debug']) {
+    originals[method] = console[method];
+    console[method] = (...args) => { logged.push(args); };
+  }
+  try {
+    // "password" typed on a US layout: plain letters, no shortcut modifiers.
+    for (const keycode of [25, 30, 31, 31, 17, 24, 19, 32]) {
+      hook.emit('keydown', { keycode, metaKey: false, ctrlKey: false, shiftKey: false, altKey: false });
+      hook.emit('keyup', { keycode, metaKey: false, ctrlKey: false, shiftKey: false, altKey: false });
+    }
+  } finally {
+    Object.assign(console, originals);
+  }
+  assert.equal(callbacks, 0);
+  assert.equal(service.pressed.size, 0, 'no keycode outlives its key-up');
+  assert.deepEqual(logged, []);
+});

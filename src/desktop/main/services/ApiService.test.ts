@@ -1,7 +1,7 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, describe, expect, test } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 
 import { ApiService } from './ApiService';
 import { SettingsService, type SafeStorage } from './SettingsService';
@@ -38,6 +38,49 @@ afterEach(() => {
 });
 
 describe('ApiService', () => {
+  test('ignores whisperer:// links that do not match the sign-in in progress exactly', async () => {
+    const serviceSettings = settings();
+    const opened: string[] = [];
+    let polls = 0;
+    let complete = false;
+    const service = new ApiService({
+      fetch: async (input) => {
+        const url = new URL(input instanceof Request ? input.url : input.toString());
+        if (url.pathname === '/v1/health') return json({ service: 'whisperer' });
+        if (url.pathname === '/device/poll') {
+          polls += 1;
+          return json(complete ? { accessToken: 'access', onboardingCompleted: true, refreshToken: 'refresh', status: 'complete' } : { status: 'pending' });
+        }
+        throw new Error(`Unexpected ${url.pathname}`);
+      },
+      onSignOut: () => undefined,
+      openExternal: async (url) => { opened.push(url); },
+      settings: serviceSettings,
+    });
+
+    expect(await service.handleDeepLink('whisperer://auth/transfer/success?device_code=anything')).toBeNull();
+    const signIn = service.signIn('https://api.example.test');
+    await vi.waitFor(() => expect(opened).toHaveLength(1));
+    const code = new URL(opened[0]!).searchParams.get('device_code')!;
+    const pollsBefore = polls;
+    for (const link of [
+      `whisperer://auth/transfer/success?device_code=${code}&access_token=stolen`,
+      `whisperer://auth/transfer/success?device_code=${code}&refresh_token=stolen`,
+      'whisperer://auth/transfer/success?device_code=00000000-0000-4000-8000-000000000000',
+      `whisperer://evil/transfer/success?device_code=${code}`,
+      `whisperer://auth/other?device_code=${code}`,
+      `https://auth/transfer/success?device_code=${code}`,
+      'not a url',
+      `javascript:alert(1)//?device_code=${code}`,
+    ]) {
+      expect(await service.handleDeepLink(link)).toBeNull();
+    }
+    expect(polls).toBe(pollsBefore);
+    expect(serviceSettings.get().authenticated).toBe(false);
+    complete = true;
+    await expect(signIn).resolves.toMatchObject({ status: 'complete' });
+  });
+
   test('lists every meeting page, not only the first', async () => {
     const serviceSettings = settings();
     serviceSettings.setConnection('https://api.example.test', { accessToken: 'access', refreshToken: 'refresh' });
