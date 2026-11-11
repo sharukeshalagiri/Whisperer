@@ -18,4 +18,4 @@ Load `onnx_asr`, `onnxruntime`, `numpy` and `av` lazily, so a remote deployment 
 
 ## Learnings
 
-None yet.
+- On Windows, a thread blocked in a synchronous read of the stdin pipe stalls every other thread that loads a native extension (numpy, onnxruntime, PyAV), so the speech model never finished loading. The parent watch in `local_runtime.py` polls the pipe with `PeekNamedPipe` there; never add another blocking read of stdin to the on-device profile.

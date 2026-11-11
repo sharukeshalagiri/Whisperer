@@ -355,6 +355,92 @@ def create_local_app(profile: LocalProfile) -> FastAPI:
     return create_app(profile.settings(), local=profile)
 
 
+PipePeek = Callable[[], "int | None"]
+
+_PARENT_POLL_SECONDS = 0.2
+_ERROR_BROKEN_PIPE = 109
+
+
+def wait_for_parent_exit(
+    stdin: IO[bytes],
+    *,
+    peek: PipePeek | None = None,
+    sleep: Callable[[float], None] = time.sleep,
+) -> None:
+    """Return once the desktop closes stdin or exits, discarding any later input.
+
+    On Windows a thread blocked in a synchronous read of the stdin pipe stalls
+    every other thread that loads a native extension (numpy, onnxruntime, PyAV)
+    until that read finishes, so the speech model would never load. There the
+    pipe is polled with ``PeekNamedPipe``, which never leaves a read pending.
+    Other systems, and a stdin that is not a pipe, use a blocking read.
+
+    Args:
+        stdin: Binary stdin after the boot line was read.
+        peek: Returns the bytes waiting in the pipe, or None once it is closed.
+            Defaults to ``PeekNamedPipe`` on Windows and to a blocking read elsewhere.
+        sleep: Waits between polls.
+
+    Returns:
+        None.
+    """
+    if peek is None:
+        peek = _windows_pipe_peek(stdin)
+    if peek is None:
+        while stdin.read(4096):
+            continue
+        return
+    while (available := peek()) is not None:
+        if available:
+            # The bytes are already in the pipe, so this read cannot block.
+            stdin.read(min(available, 4096))
+        else:
+            sleep(_PARENT_POLL_SECONDS)
+
+
+def _windows_pipe_peek(stdin: IO[bytes]) -> PipePeek | None:
+    """Build a non-blocking ``PeekNamedPipe`` probe for stdin on Windows.
+
+    Args:
+        stdin: Binary stdin.
+
+    Returns:
+        The probe, or None off Windows or when stdin is not a pipe.
+    """
+    if sys.platform != "win32":
+        return None
+    import ctypes
+    import msvcrt
+    from ctypes import wintypes
+
+    try:
+        handle = msvcrt.get_osfhandle(stdin.fileno())
+    except (OSError, ValueError):
+        return None
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    peek_named_pipe = kernel32.PeekNamedPipe
+    peek_named_pipe.argtypes = [
+        wintypes.HANDLE,
+        wintypes.LPVOID,
+        wintypes.DWORD,
+        wintypes.LPVOID,
+        ctypes.POINTER(wintypes.DWORD),
+        wintypes.LPVOID,
+    ]
+    peek_named_pipe.restype = wintypes.BOOL
+
+    def peek() -> int | None:
+        available = wintypes.DWORD(0)
+        if peek_named_pipe(handle, None, 0, None, ctypes.byref(available), None):
+            return int(available.value)
+        return None
+
+    if peek() is None and ctypes.get_last_error() != _ERROR_BROKEN_PIPE:
+        # Not a pipe, for example a console or a file: a blocking read is safe there.
+        return None
+    return peek
+
+
 class LocalServer:
     """Run the on-device profile until stdin closes or a signal arrives.
 
@@ -441,8 +527,7 @@ class LocalServer:
         loop = asyncio.get_running_loop()
 
         def watch_stdin() -> None:
-            while self._stdin.read(4096):
-                continue
+            wait_for_parent_exit(self._stdin)
             loop.call_soon_threadsafe(setattr, server, "should_exit", True)
 
         threading.Thread(target=watch_stdin, name="parent-watch", daemon=True).start()

@@ -8,9 +8,11 @@ import hmac
 import io
 import json
 import os
+import queue
 import secrets
 import subprocess
 import sys
+import threading
 import time
 import wave
 from collections.abc import Iterator
@@ -30,7 +32,7 @@ from whisperer_api.local_config import (
     read_boot_document,
     read_local_config,
 )
-from whisperer_api.local_runtime import LocalProfile, create_local_app
+from whisperer_api.local_runtime import LocalProfile, create_local_app, wait_for_parent_exit
 from whisperer_api.main import create_app
 from whisperer_api.settings import Settings
 
@@ -712,3 +714,71 @@ def test_note_summary_provider_failure_is_502(tmp_path: Path) -> None:
         response = client.post(f"/v1/notes/{note['id']}/summary", headers=_auth())
         assert response.status_code == 502
         assert "changed" not in response.json()["detail"]
+
+
+def test_parent_watch_polls_until_the_pipe_closes() -> None:
+    """The Windows poller drains late input, sleeps while idle and stops on a closed pipe."""
+    answers: list[int | None] = [0, 3, 0, None]
+    sleeps: list[float] = []
+    stdin = io.BytesIO(b"abc")
+
+    wait_for_parent_exit(stdin, peek=lambda: answers.pop(0), sleep=sleeps.append)
+
+    assert answers == []
+    assert stdin.read() == b""
+    assert len(sleeps) == 2
+
+
+def test_parent_watch_reads_to_eof_without_a_pipe() -> None:
+    """A stdin that is not a pipe falls back to reading until end of file."""
+    stdin = io.BytesIO(b"x" * 10_000)
+
+    wait_for_parent_exit(stdin)
+
+    assert stdin.read() == b""
+
+
+_NATIVE_LOAD_SCRIPT = """
+import sys, threading
+from whisperer_api.local_runtime import wait_for_parent_exit
+
+watcher = threading.Thread(target=wait_for_parent_exit, args=(sys.stdin.buffer,), daemon=True)
+watcher.start()
+
+def load() -> None:
+    import numpy
+    import onnxruntime
+    print("loaded", flush=True)
+
+loader = threading.Thread(target=load)
+loader.start()
+loader.join()
+watcher.join()
+print("parent gone", flush=True)
+"""
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="the stdin pipe stall is specific to Windows")
+def test_native_extensions_load_while_the_parent_watch_runs() -> None:
+    """Regression: a blocking stdin read on Windows stalled numpy and the speech model forever."""
+    pytest.importorskip("onnxruntime")
+    process = subprocess.Popen(  # noqa: S603
+        [sys.executable, "-c", _NATIVE_LOAD_SCRIPT],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    try:
+        assert process.stdout is not None
+        assert process.stdin is not None
+        lines: queue.Queue[bytes] = queue.Queue()
+        threading.Thread(target=lambda: lines.put(process.stdout.readline()), daemon=True).start()
+        # Before the fix the loader never returned while stdin stayed open.
+        assert lines.get(timeout=60).strip() == b"loaded"
+        process.stdin.close()
+        stdout, _ = process.communicate(timeout=30)
+        assert stdout.strip() == b"parent gone"
+        assert process.returncode == 0
+    finally:
+        process.kill()
+        process.wait()
