@@ -27,6 +27,11 @@ services:
       TOKEN_SECRET: "${TOKEN_SECRET:-CHANGE_ME}"
       GATEWAY_BASE_URL: "${GATEWAY_BASE_URL:-http://litellm:4000}"
       GATEWAY_API_KEY: "${GATEWAY_API_KEY:-}"
+      # Optional dedicated endpoints; blank means "use the gateway".
+      SPEECH_BASE_URL: "${SPEECH_BASE_URL:-}"
+      SPEECH_API_KEY: "${SPEECH_API_KEY:-}"
+      LLM_BASE_URL: "${LLM_BASE_URL:-}"
+      LLM_API_KEY: "${LLM_API_KEY:-}"
       TRANSCRIPTION_MODEL: "${TRANSCRIPTION_MODEL:-whisper-1}"
       POLISH_MODEL: "${POLISH_MODEL:-gpt-4o-mini}"
       ACCESS_TOKEN_MINUTES: "${ACCESS_TOKEN_MINUTES:-15}"
