@@ -26,7 +26,7 @@ jobs:
           - runner: windows-2022
             script: dist:windows
             pattern: '*.exe'
-          - runner: macos-14
+          - runner: macos-latest
             script: dist:macos
             pattern: '*.dmg'
     runs-on: ${{ matrix.runner }}
