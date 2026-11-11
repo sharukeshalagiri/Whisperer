@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import re
 from dataclasses import dataclass
 from datetime import datetime
@@ -14,6 +15,8 @@ from sqlalchemy.orm import Session
 
 from whisperer_api.auth import Clock
 from whisperer_api.persistence import DictionaryEntry, Note, Transcript, record_tombstone
+
+_LOGGER = logging.getLogger("whisperer_api.resources")
 
 
 class InferenceGateway(Protocol):
@@ -408,7 +411,13 @@ class ResourceService:
         raw_text = await self._inference.transcribe(audio, filename, content_type, language)
         text, replacements = self._substitute(session, user_id, raw_text)
         if polish:
-            text = await self._inference.polish(text)
+            try:
+                text = await self._inference.polish(text)
+            except ValueError as error:
+                # The transcript is already good; a language-model failure must not discard it.
+                _LOGGER.warning(
+                    "Polish failed (%s); returning the unpolished text.", type(error).__name__
+                )
         return TranscriptionResult(
             id=str(uuid4()),
             text=text,

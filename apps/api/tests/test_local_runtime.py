@@ -786,3 +786,36 @@ def test_native_extensions_load_while_the_parent_watch_runs() -> None:
     finally:
         process.kill()
         process.wait()
+
+
+def test_dictation_keeps_the_transcript_when_polish_fails(tmp_path: Path) -> None:
+    """A language-model failure after a good transcription returns the unpolished text."""
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/audio/transcriptions"):
+            return httpx.Response(200, json={"text": "hello teh world"})
+        return httpx.Response(500, json={"error": "model crashed"})
+
+    config = LocalConfig.model_validate(
+        _config(
+            tmp_path,
+            llm={"provider": "http", "baseUrl": "https://llm.example.test/v1", "model": "m"},
+        )
+    )
+    profile = LocalProfile(
+        config=config,
+        boot=BootDocument.model_validate({"bootToken": _TOKEN, "speechApiKey": "speech-secret"}),
+        emit=lambda event: None,
+        allowed_hosts=frozenset({"testserver"}),
+        transport=httpx.MockTransport(handle),
+    )
+    with TestClient(create_local_app(profile)) as client:
+        client.post("/v1/dictionary", headers=_auth(), json={"phrase": "teh", "replacement": "the"})
+        response = client.post(
+            "/v1/transcriptions",
+            headers=_auth(),
+            params={"polish": "true"},
+            files={"file": ("recording.wav", _wav(), "audio/wav")},
+        )
+    assert response.status_code == 200, response.text
+    assert response.json()["text"] == "hello the world"
