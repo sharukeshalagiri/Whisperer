@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "uv": {
+    "version": "0.13.1",
+    "source": "https://github.com/astral-sh/uv/releases/tag/0.13.1",
+    "assets": {
+      "darwin-arm64": { "url": "https://github.com/astral-sh/uv/releases/download/0.13.1/uv-aarch64-apple-darwin.tar.gz", "sha256": "cfe454573412ff7380d15fc7dae5997ab53ffce72fce0a78e91ddbc84001acd2", "size": 14280170, "archive": "tar.gz", "binary": "uv" },
+      "darwin-x64": { "url": "https://github.com/astral-sh/uv/releases/download/0.13.1/uv-x86_64-apple-darwin.tar.gz", "sha256": "bb7b805bdcf3d0bc8c74ceb94569e6b3e8aa35bd492acdbb9d46bf46d9d4ff6b", "size": 17491796, "archive": "tar.gz", "binary": "uv" },
+      "linux-x64": { "url": "https://github.com/astral-sh/uv/releases/download/0.13.1/uv-x86_64-unknown-linux-gnu.tar.gz", "sha256": "eadd9d27c134ab5ac1ffd4473b97a741407f3ea238288f03121fc4deddf90220", "size": 16738706, "archive": "tar.gz", "binary": "uv" },
+      "linux-arm64": { "url": "https://github.com/astral-sh/uv/releases/download/0.13.1/uv-aarch64-unknown-linux-gnu.tar.gz", "sha256": "9041c73c99fdc5892cf128140beb354eca9231d502068cc36e6cb53a8e59ad14", "size": 15838367, "archive": "tar.gz", "binary": "uv" },
+      "win32-x64": { "url": "https://github.com/astral-sh/uv/releases/download/0.13.1/uv-x86_64-pc-windows-msvc.zip", "sha256": "3b2661a463a5baea7f5076ea2b25ab71d77f36a6c0d809e5350651792f80a672", "size": 15308685, "archive": "zip", "binary": "uv.exe" },
+      "win32-arm64": { "url": "https://github.com/astral-sh/uv/releases/download/0.13.1/uv-aarch64-pc-windows-msvc.zip", "sha256": "ec7846a5939b4654afee24f2d82bf6fde71bd7a6952d7748f1135ab301dd0a49", "size": 15802989, "archive": "zip", "binary": "uv.exe" }
+    }
+  },
+  "python": { "version": "3.12.15" },
+  "api": { "package": "whisperer-api", "extras": ["local"] },
+  "minimumFreeBytes": 2147483648
+}

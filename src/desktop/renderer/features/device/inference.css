@@ -1,0 +1,466 @@
+/* On-device server status and inference choices. Reuses hub and setup tokens; no new palette. */
+.local-server,
+.inference-form {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+.local-server__rows {
+  display: grid;
+  margin: 0;
+  overflow: hidden;
+  border-radius: 12px;
+  background: var(--surface-raised);
+}
+.local-server__row {
+  display: grid;
+  grid-template-columns: 130px minmax(0, 1fr);
+  gap: 14px;
+  padding: 12px 16px;
+}
+.local-server__row + .local-server__row {
+  border-top: 1px solid var(--line);
+}
+.local-server__row dt {
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 650;
+}
+.local-server__row dd {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  margin: 0;
+}
+.local-server__state {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+}
+.local-server__state > i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--quiet);
+}
+.local-server__state--ok > i {
+  background: var(--success);
+}
+.local-server__state--error {
+  color: var(--danger);
+}
+.local-server__state--error > i {
+  background: var(--danger);
+}
+.local-server__state > .device-spinner {
+  width: 10px;
+  height: 10px;
+}
+.local-server__message,
+.local-server__hint,
+.inference-form__hint,
+.inference-form__test > span {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.local-server__model,
+.local-server__hint code,
+.inference-form__hint code {
+  color: var(--ink);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.local-server__progress {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.local-server__progress progress {
+  width: 100%;
+  height: 6px;
+  accent-color: var(--accent-strong);
+}
+.local-server__error,
+.inference-form__test > span.is-error {
+  margin: 0;
+  color: var(--danger);
+  font-size: 13px;
+  line-height: 1.4;
+}
+.inference-form__notice {
+  margin: 0;
+  color: var(--success);
+  font-size: 13px;
+}
+.local-server__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.local-server__log {
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+  font-size: 13px;
+}
+.local-server__log summary {
+  width: fit-content;
+  border-radius: 6px;
+  color: var(--muted);
+  cursor: pointer;
+  font-weight: 600;
+}
+.local-server__log summary:focus-visible {
+  outline: 3px solid #69645b;
+  outline-offset: 2px;
+}
+.local-server__log ol,
+.local-server__log p {
+  max-height: 180px;
+  margin: 8px 0 0;
+  overflow: auto;
+  padding: 10px 12px 10px 34px;
+  border-radius: 8px;
+  color: var(--muted);
+  background: var(--surface-raised);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.local-server__log p {
+  padding-left: 12px;
+  font-family: inherit;
+}
+.inference-form__group {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.inference-form__group + .inference-form__group {
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.inference-form__group legend {
+  margin-bottom: 10px;
+  padding: 0;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 650;
+}
+.inference-form__field {
+  display: grid;
+  gap: 6px;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+}
+.inference-form__check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink);
+  font-size: 13px;
+}
+.inference-input {
+  width: 100%;
+  min-height: 36px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  padding: 6px 11px;
+  color: var(--ink);
+  background: var(--surface);
+  font: inherit;
+  font-size: 14px;
+}
+.inference-input:disabled {
+  opacity: 0.55;
+}
+.inference-choice {
+  display: inline-flex;
+  width: fit-content;
+  max-width: 100%;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 9px;
+  background: var(--surface-soft);
+}
+.inference-choice label {
+  position: relative;
+  border-radius: 7px;
+  padding: 6px 12px;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 650;
+}
+.inference-choice label.is-selected {
+  color: var(--ink);
+  background: var(--surface);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 8%);
+}
+.inference-choice input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.inference-choice label:has(input:focus-visible) {
+  outline: 3px solid #69645b;
+  outline-offset: 1px;
+}
+.inference-form__test {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+.inference-form--settings .settings-row-button,
+.inference-form--settings .settings-primary-button,
+.local-server--settings .settings-row-button,
+.local-server--settings .settings-primary-button {
+  width: auto;
+  min-width: 96px;
+}
+.settings-primary-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+/* Settings variant: match the other settings pages' row cards, spacing and type scale. */
+.settings-inference {
+  display: grid;
+  gap: 28px;
+}
+.settings-section-label {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.local-server__card {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+.local-server--settings .local-server__card {
+  gap: 0;
+  overflow: hidden;
+  border-radius: 12px;
+  background: var(--surface-raised);
+}
+.local-server--settings .local-server__rows {
+  border-radius: 0;
+  background: transparent;
+}
+.local-server--settings .local-server__card > :not(.local-server__rows) {
+  margin: 0;
+  padding: 14px 20px;
+  border-top: 1px solid var(--line);
+}
+.local-server--settings .local-server__actions:empty {
+  display: none;
+}
+.local-server--settings .local-server__row {
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: 20px;
+  padding: 16px 20px;
+}
+.local-server--settings .local-server__row dt {
+  font-size: 15px;
+}
+.local-server--settings .local-server__log ol,
+.local-server--settings .local-server__log p {
+  background: var(--surface);
+}
+/* Settings buttons match the other pages: neutral fill, dark text, primary only when enabled. */
+.local-server--settings .settings-primary-button,
+.inference-form--settings .settings-primary-button {
+  min-width: 140px;
+}
+.inference-form--settings .settings-row-button {
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.inference-form--settings {
+  gap: 16px;
+}
+.inference-form--settings .inference-form__group {
+  gap: 12px;
+  padding: 18px 20px 20px;
+  border-radius: 12px;
+  background: var(--surface-raised);
+}
+.inference-form--settings .inference-form__group + .inference-form__group {
+  padding-top: 18px;
+  border-top: 0;
+}
+/* A floated legend lays out inside the card padding instead of on the fieldset edge. */
+.inference-form--settings .inference-form__group legend {
+  float: left;
+  width: 100%;
+  margin-bottom: 2px;
+}
+.inference-form--settings .inference-form__group legend + * {
+  clear: both;
+}
+.inference-form--settings .inference-input {
+  border-color: var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+.inference-form--settings .inference-choice {
+  background: var(--surface-soft);
+}
+
+/* Onboarding inference card: taller than other steps, so it scrolls within the panel. */
+.device-setup-card.device-inference-card {
+  max-height: calc(100vh - 140px);
+  overflow-y: auto;
+}
+
+/* Sidebar connection indicator beside the product mark. */
+.brand-row__mark {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+}
+.connection-indicator {
+  position: relative;
+  display: inline-grid;
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  margin-left: 4px;
+  place-items: center;
+  border-radius: 7px;
+  color: var(--muted);
+}
+.connection-indicator:hover,
+.connection-indicator:focus-visible {
+  color: var(--ink);
+  background: var(--surface-soft);
+}
+.app-shell--collapsed .brand-row {
+  flex-direction: column;
+  gap: 4px;
+}
+.app-shell--collapsed .brand-row__mark {
+  justify-content: center;
+}
+.app-shell--collapsed .connection-indicator {
+  margin-left: 0;
+}
+.device-mode-notice {
+  margin: 0 0 18px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  color: var(--ink);
+  background: var(--surface-raised);
+  font-size: 14px;
+}
+.device-mode-notice a {
+  color: inherit;
+  font-weight: 650;
+}
+
+/* Top-bar cloud / device switch, beside Notifications. Shares the indicator tooltip look. */
+.connection-toggle {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  margin-right: 4px;
+  -webkit-app-region: no-drag;
+}
+.connection-toggle__switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 26px;
+  padding: 0 7px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  background: var(--surface);
+  cursor: pointer;
+}
+.connection-toggle__switch:hover,
+.connection-toggle__switch:focus-visible {
+  color: var(--ink);
+  background: var(--surface-soft);
+}
+.connection-toggle__switch[aria-disabled='true'] {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+.connection-toggle__thumb {
+  position: relative;
+  display: inline-block;
+  width: 26px;
+  height: 14px;
+  border-radius: 999px;
+  background: var(--line);
+  transition: background 120ms ease;
+}
+.connection-toggle__thumb::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--surface);
+  transition: transform 120ms ease;
+}
+.connection-toggle[data-connection='device'] .connection-toggle__thumb {
+  background: var(--setup-purple);
+}
+.connection-toggle[data-connection='device'] .connection-toggle__thumb::after {
+  transform: translateX(12px);
+}
+.connection-toggle[data-connection='device'] .lucide-laptop,
+.connection-toggle[data-connection='remote'] .lucide-cloud {
+  color: var(--ink);
+}
+.connection-toggle__tooltip {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 6px);
+  right: 0;
+  width: max-content;
+  max-width: 260px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  color: var(--surface);
+  background: var(--ink);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.3;
+  pointer-events: none;
+  visibility: hidden;
+  overflow-wrap: anywhere;
+}
+.connection-toggle:hover .connection-toggle__tooltip,
+.connection-toggle:focus-within .connection-toggle__tooltip {
+  visibility: visible;
+}
+@media (prefers-reduced-motion: reduce) {
+  .connection-toggle__thumb,
+  .connection-toggle__thumb::after {
+    transition: none;
+  }
+}

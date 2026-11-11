@@ -1,0 +1,49 @@
+/* Sidebar tooltip bubble. It lives in a body portal, so it relies only on the shared theme variables. */
+.sidebar-tooltip {
+  position: fixed;
+  z-index: 1000;
+  top: 0;
+  left: 0;
+  box-sizing: border-box;
+  width: max-content;
+  max-width: min(260px, calc(100vw - 16px));
+  padding: 6px 10px;
+  border: 1px solid var(--line-strong, #d9d9d2);
+  border-radius: 8px;
+  color: var(--ink, #20201e);
+  background: var(--surface-raised, #f4f4ef);
+  box-shadow: var(--shadow, 0 12px 28px rgb(37 34 27 / 9%));
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.3;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+  -webkit-app-region: no-drag;
+  visibility: hidden;
+  opacity: 0;
+}
+.sidebar-tooltip[data-ready='true'] {
+  visibility: visible;
+  opacity: 1;
+  animation: sidebar-tooltip-in 120ms ease-out both;
+}
+.sidebar-tooltip::before {
+  content: '';
+  position: absolute;
+  top: var(--sidebar-tooltip-arrow, 50%);
+  width: 8px;
+  height: 8px;
+  margin-top: -5px;
+  border: 1px solid var(--line-strong, #d9d9d2);
+  background: var(--surface-raised, #f4f4ef);
+}
+.sidebar-tooltip[data-side='right']::before { left: -5px; border-right: 0; border-top: 0; transform: rotate(45deg); }
+.sidebar-tooltip[data-side='left']::before { right: -5px; border-left: 0; border-bottom: 0; transform: rotate(45deg); }
+@keyframes sidebar-tooltip-in {
+  from { opacity: 0; transform: translateX(-4px); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-tooltip[data-ready='true'] { animation: none; }
+}

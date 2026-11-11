@@ -1,0 +1,93 @@
+/* Insights: a bounded grid of metric cards and the activity heat map. Figures use the serif the Dictation page uses. */
+
+:root {
+  --heat-0: #ebebe5;
+  --heat-1: #c9e3dc;
+  --heat-2: #7fbcac;
+  --heat-3: #3f8f7e;
+  --heat-4: #1f5e52;
+  --heat-streak: #1f5e52;
+}
+:root[data-theme='dark'] {
+  --heat-0: #3c3933;
+  --heat-1: #2f4a44;
+  --heat-2: #3b7366;
+  --heat-3: #4f9f8d;
+  --heat-4: #7fcbb8;
+  --heat-streak: #7fcbb8;
+}
+
+.insights-page__heading { margin-bottom: 22px; }
+.insights-page__status { margin: 0; padding: 12px 0; color: var(--muted); font-size: 13px; }
+
+/* Four columns: pace, fixes and the double-width total on top; apps beside the triple-width streak below. */
+.insights-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.insights-grid__total { grid-column: span 2; }
+.insights-grid__streak { grid-column: span 3; }
+@container (max-width: 700px) {
+  .insights-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .insights-grid__streak { grid-column: span 2; }
+}
+@container (max-width: 480px) {
+  .insights-grid { grid-template-columns: minmax(0, 1fr); }
+  .insights-grid__total, .insights-grid__streak { grid-column: auto; }
+}
+
+.metric-card { display: flex; flex-direction: column; min-width: 0; padding: 16px 18px; border: 1px solid var(--line); border-radius: 15px; background: var(--surface-raised); }
+.metric-card__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.metric-card__value { margin: 0; color: var(--ink); font-family: 'IBM Plex Serif', Georgia, serif; font-size: 32px; font-weight: 400; letter-spacing: -.02em; line-height: 1.05; font-variant-numeric: lining-nums tabular-nums; }
+.metric-card__label { display: flex; align-items: center; gap: 5px; margin: 6px 0 0; color: var(--muted); font-size: 10.5px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; white-space: nowrap; }
+.metric-card__badge { flex: none; }
+.metric-card__body { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line-strong); }
+.metric-card__hint { display: inline-flex; color: var(--quiet); cursor: help; }
+.metric-card__row { display: flex; align-items: center; gap: 5px; margin: 0; color: var(--ink); font-size: 14px; white-space: nowrap; }
+.metric-card__row + .metric-card__row { margin-top: 8px; }
+.metric-card__row strong { font-weight: 650; font-variant-numeric: tabular-nums; }
+
+.insights-month { display: inline-flex; align-items: center; gap: 4px; padding: 5px 10px; border-radius: 999px; background: var(--surface); color: var(--ink); font-size: 12px; font-weight: 600; white-space: nowrap; }
+.insights-month[data-direction='up'] { color: var(--success); }
+.insights-month[data-direction='down'] { color: var(--danger); }
+.insights-books { margin: 0 0 12px; color: var(--ink); font-size: 15px; }
+.insights-facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 0; }
+.insights-facts dt { color: var(--muted); font-size: 11px; }
+.insights-facts dd { margin: 2px 0 0; color: var(--ink); font-size: 16px; font-weight: 650; font-variant-numeric: tabular-nums; }
+
+.insights-apps { margin: 0; padding: 0; list-style: none; }
+.insights-apps li { display: flex; justify-content: space-between; gap: 10px; padding: 5px 0; font-size: 13px; }
+.insights-apps li + li { border-top: 1px solid var(--line); }
+.insights-apps span { min-width: 0; overflow: hidden; color: var(--ink); text-overflow: ellipsis; white-space: nowrap; }
+.insights-apps strong { flex: none; font-weight: 650; font-variant-numeric: tabular-nums; }
+
+/* The gauge is a compact half ring centred in the card, never taller than its figure. */
+.wpm-gauge { position: relative; width: min(100%, 190px); margin: 0 auto; }
+.wpm-gauge svg { display: block; width: 100%; height: auto; overflow: visible; }
+.wpm-gauge path { fill: none; stroke-linecap: round; }
+.wpm-gauge__track { stroke: var(--line-strong); }
+.wpm-gauge__fill { stroke: var(--heat-4); transition: stroke-dashoffset 500ms ease-out; }
+.wpm-gauge figcaption { position: absolute; inset: auto 0 0; display: flex; flex-direction: column; align-items: center; color: var(--muted); font-size: 13px; }
+.wpm-gauge figcaption strong { color: var(--ink); font-size: 18px; font-weight: 650; }
+
+.insights-grid__streak .metric-card__label { letter-spacing: .1em; }
+.insights-grid__streak .metric-card__value { font-size: 28px; white-space: nowrap; }
+.insights-streak__longest { color: var(--ink); font-size: 10.5px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; white-space: nowrap; }
+
+/* Heat map: week columns, Sunday rows, month labels above and day labels beside; every cell is square. */
+.heat-map { display: flex; flex-direction: column; gap: 8px; }
+.heat-map__months { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 6px; padding-left: 30px; max-width: calc(30px + 6px + 16 * 30px + 15 * 3px + 2 * 34px); }
+.heat-map__month-track { position: relative; height: 16px; color: var(--muted); font-size: 12px; }
+.heat-map__month-track span { position: absolute; top: 0; white-space: nowrap; }
+.heat-map__page { min-height: 24px; padding: 0 4px; }
+.heat-map__page:disabled { opacity: .35; }
+/* Cells stay between 12px and 30px square; the grid never stretches to fill a wide card. */
+.heat-map__body { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 6px; }
+.heat-map__grid { max-width: calc(16 * 30px + 15 * 3px); }
+.heat-map__days { display: grid; grid-template-rows: repeat(7, 1fr); color: var(--muted); font-size: 11px; }
+.heat-map__days span { display: flex; align-items: center; }
+.heat-map__grid { gap: 3px; }
+.heat-map__month-track { max-width: calc(16 * 30px + 15 * 3px); }
+.heat-map__cell { display: block; aspect-ratio: 1; width: 100%; min-width: 10px; border: 2px solid transparent; border-radius: 4px; background: var(--heat-0); background-clip: padding-box; }
+.heat-map__cell[data-streak] { border-color: var(--heat-streak); }
+.heat-map__legend .heat-map__cell { width: 16px; }
+.heat-map__footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--muted); font-size: 12px; }
+.heat-map__legend { display: inline-flex; align-items: center; gap: 4px; }
+.heat-map__tooltip { z-index: 10; padding: 5px 9px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); font-size: 12px; box-shadow: var(--shadow); }

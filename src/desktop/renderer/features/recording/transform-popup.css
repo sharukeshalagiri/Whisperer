@@ -1,0 +1,35 @@
+/* Result pop-up above the pill. It matches the pill: black glass, light text, purple accent. */
+html[data-window='transform-popup'], html[data-window='transform-popup'] body, html[data-window='transform-popup'] #root { min-width: 0; background: transparent; }
+.transform-popup {
+  display: flex; flex-direction: column; box-sizing: border-box; width: 100%; height: 100%;
+  overflow: hidden; border: 1px solid #30302f; border-radius: 14px; color: #fcfcfb; background: rgb(0 0 0 / 92%);
+  box-shadow: 0 10px 30px rgb(0 0 0 / 35%); font: 13px/1.35 system-ui, -apple-system, sans-serif;
+  animation: transform-popup-in 160ms cubic-bezier(.2,.8,.2,1);
+}
+.transform-popup__bar { display: flex; align-items: center; gap: 9px; min-height: 62px; padding: 10px 10px 10px 14px; }
+.transform-popup.is-expanded .transform-popup__bar { min-height: 50px; border-bottom: 1px solid #262625; }
+.transform-popup__icon { display: grid; flex: 0 0 22px; width: 22px; height: 22px; place-items: center; border-radius: 50%; color: #0b0b0b; background: #8dd3a5; }
+.transform-popup.is-failed .transform-popup__icon { color: #fcfcfb; background: #b4453f; }
+.transform-popup__title { display: grid; flex: 1 1 auto; min-width: 0; gap: 2px; }
+.transform-popup__title strong { overflow-wrap: anywhere; font-weight: 650; }
+.transform-popup__title small { color: #c8c2b8; font-size: 12px; overflow-wrap: anywhere; }
+.transform-popup button { display: inline-flex; align-items: center; gap: 4px; border: 0; color: inherit; background: transparent; cursor: pointer; font: inherit; }
+.transform-popup button:focus-visible { outline: 2px solid #a394c7; outline-offset: 2px; }
+.transform-popup__toggle { flex: 0 0 auto; padding: 6px 10px; border-radius: 999px; color: #e4dbff !important; background: #2a2540 !important; font-weight: 650 !important; }
+.transform-popup__toggle:hover { background: #3a3358 !important; }
+.transform-popup__toggle svg { transition: transform 150ms ease; }
+.transform-popup__toggle[aria-expanded='true'] svg { transform: rotate(180deg); }
+.transform-popup__close { flex: 0 0 26px; justify-content: center; width: 26px; height: 26px; border-radius: 50%; color: #a8a29a !important; }
+.transform-popup__close:hover { color: #fcfcfb !important; background: #262625 !important; }
+.transform-popup__diff { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; }
+.transform-popup__diff p { flex: 1 1 auto; margin: 0; padding: 12px 14px; overflow-y: auto; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.85; word-spacing: .08em; }
+/* Padding and margins keep adjacent highlights apart so removed and added words never touch. */
+.transform-popup__diff del, .transform-popup__diff ins { margin: 0 2px; padding: 1px 4px; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+.transform-popup__diff del { border-radius: 3px; color: #ffb4ae; background: rgb(212 76 66 / 26%); text-decoration: line-through; text-decoration-color: rgb(255 180 174 / 70%); }
+.transform-popup__diff ins { border-radius: 3px; color: #b6f0c8; background: rgb(46 160 90 / 26%); text-decoration: none; }
+.transform-popup__diff footer { display: flex; gap: 14px; padding: 8px 14px 10px; border-top: 1px solid #262625; color: #a8a29a; font-size: 11px; }
+.transform-popup__legend::before { display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 2px; content: ''; }
+.transform-popup__legend--removed::before { background: #d44c42; }
+.transform-popup__legend--added::before { background: #2ea05a; }
+@keyframes transform-popup-in { from { opacity: 0; transform: translateY(6px) scale(.98); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .transform-popup { animation: none; } .transform-popup__toggle svg { transition: none; } }

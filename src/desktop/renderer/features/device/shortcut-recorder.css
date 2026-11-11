@@ -1,0 +1,319 @@
+.shortcut-recorder {
+  min-width: 0;
+}
+
+.shortcut-recorder__field-shell {
+  display: flex;
+  width: 168px;
+  min-height: 46px;
+  align-items: center;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.shortcut-recorder__field {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: center;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 9px;
+  color: var(--ink);
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.shortcut-recorder[data-capturing='true'] .shortcut-recorder__field-shell {
+  border-color: #a88ed5;
+  box-shadow: 0 0 0 2px rgb(168 142 213 / 25%);
+}
+
+.shortcut-recorder__field:focus-visible,
+.shortcut-recorder__icon:focus-visible,
+.shortcut-dialog__add:focus-visible,
+.shortcut-dialog__close:focus-visible {
+  outline: 2px solid #a88ed5;
+  outline-offset: 2px;
+}
+
+.shortcut-recorder__field:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.shortcut-recorder__hint {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shortcut-recorder__icon {
+  display: inline-grid;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  place-items: center;
+  border: 0;
+  border-radius: 7px;
+  color: var(--ink);
+  background: transparent;
+  cursor: pointer;
+}
+
+.shortcut-recorder__icon:hover {
+  background: var(--surface-soft);
+}
+
+.shortcut-chips {
+  display: inline-flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.shortcut-chip {
+  padding: 3px 7px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--ink);
+  background: var(--surface-raised);
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.shortcut-chip.is-pressed {
+  border-color: #a88ed5;
+  color: #fff;
+  background: #a88ed5;
+}
+
+.settings-dialog.shortcut-dialog {
+  display: flex;
+  width: min(720px, calc(100vw - 40px));
+  max-height: min(720px, calc(100vh - 40px));
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  color: var(--ink);
+  background: var(--surface);
+}
+
+.shortcut-dialog__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 31px 36px 0;
+}
+
+.settings-dialog.shortcut-dialog h2 {
+  margin: 0;
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+.shortcut-dialog__close {
+  display: inline-grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  margin: -7px -7px 0 0;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  color: var(--ink);
+  background: transparent;
+  cursor: pointer;
+}
+
+.shortcut-dialog__close:hover {
+  background: var(--surface-soft);
+}
+
+.shortcut-dialog__subtitle {
+  margin: 13px 36px 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.shortcut-dialog__note {
+  margin: 12px 36px 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.shortcut-dialog__body {
+  min-height: 0;
+  overflow-y: auto;
+  margin-top: 24px;
+  padding: 0 36px 24px;
+}
+
+.shortcut-dialog__body > .form-error {
+  margin: 0 0 12px;
+}
+
+.shortcut-dialog__list {
+  display: grid;
+  gap: 12px;
+}
+
+.shortcut-dialog__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 315px;
+  gap: 24px;
+  align-items: center;
+  padding: 22px 20px;
+  border-radius: 12px;
+  background: var(--surface-raised);
+}
+
+.shortcut-dialog__row > :first-child {
+  min-width: 0;
+}
+
+.shortcut-dialog__row strong {
+  display: block;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.shortcut-dialog__row p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.42;
+}
+
+.shortcut-dialog__bindings {
+  display: grid;
+  gap: 8px;
+}
+
+.shortcut-dialog__binding-line {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.shortcut-dialog__binding-line .shortcut-recorder {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.shortcut-dialog__binding-line .shortcut-recorder__field-shell {
+  width: 100%;
+}
+
+.shortcut-dialog__add {
+  display: inline-grid;
+  width: 46px;
+  height: 46px;
+  flex: 0 0 46px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 11px;
+  color: var(--muted);
+  background: var(--surface-soft);
+  cursor: pointer;
+}
+
+.shortcut-dialog__add:hover {
+  color: var(--ink);
+  background: var(--line);
+}
+
+.shortcut-dialog__derived {
+  display: flex;
+  min-height: 46px;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--muted);
+  background: var(--surface);
+  font-size: 13px;
+}
+
+.shortcut-dialog__footer {
+  display: flex;
+  flex: 0 0 auto;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 36px 26px;
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.settings-dialog.shortcut-dialog .settings-row-button,
+.settings-dialog.shortcut-dialog .settings-primary-button {
+  width: auto;
+  min-height: 44px;
+  padding: 9px 23px;
+  border: 0;
+  border-radius: 10px;
+  font-size: 14px;
+}
+
+.settings-dialog.shortcut-dialog .settings-row-button {
+  color: var(--ink);
+  background: var(--surface-soft);
+}
+
+.settings-dialog.shortcut-dialog .settings-primary-button {
+  color: var(--surface);
+  background: var(--accent-strong);
+}
+
+@media (max-width: 620px) {
+  .shortcut-dialog__header {
+    padding-inline: 24px;
+  }
+  .shortcut-dialog__subtitle,
+  .shortcut-dialog__note {
+    margin-inline: 24px;
+  }
+  .shortcut-dialog__body {
+    padding-inline: 24px;
+  }
+  .shortcut-dialog__footer {
+    padding-inline: 24px;
+  }
+  .shortcut-dialog__row {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .shortcut-recorder__field-shell {
+    transition:
+      border-color 120ms ease,
+      box-shadow 120ms ease;
+  }
+}
+
+.shortcut-recorder__notice {
+  max-width: 260px;
+  margin: 6px 0 0;
+  color: var(--danger);
+  font-size: 12px;
+  line-height: 1.35;
+}

@@ -1,0 +1,111 @@
+.recording-overlay {
+  width: 100%; height: 100%; display: flex; justify-content: center; align-items: flex-end;
+  user-select: none; -webkit-app-region: no-drag;
+  color: #fcfcfb; background: transparent; position: relative;
+}
+/* The window grows toward the screen interior for tooltips, so the bar stays pinned to its edge. */
+.recording-overlay--left { justify-content: flex-start; align-items: center; }
+.recording-overlay--right { justify-content: flex-end; align-items: center; }
+.recording-overlay__stack {
+  display: flex; flex: 0 0 auto; align-items: center; justify-content: center; gap: 6px;
+  box-sizing: border-box; padding: 6px 10px;
+}
+.recording-overlay--left .recording-overlay__stack, .recording-overlay--right .recording-overlay__stack { flex-direction: column; padding: 10px 6px; }
+.recording-overlay__slot { position: relative; display: flex; flex: 0 0 auto; }
+.recording-pill {
+  display: flex; flex: 0 0 auto; align-items: center; justify-content: center; gap: 5px;
+  box-sizing: border-box; padding: 5px; border: 1px solid #30302f; border-radius: 22.5px;
+  color: #fcfcfb; background: #000; overflow: hidden;
+  transition: width 100ms cubic-bezier(.05,.6,.4,.95), height 100ms cubic-bezier(.05,.6,.4,.95), border-color 100ms;
+}
+.recording-pill--resting { padding: 0; border-radius: 6px; border-color: rgba(255,255,255,.5); opacity: .5; }
+.recording-pill--ready:hover { background: #30302f; border-color: #5b5b59; }
+.recording-pill--error { border: 1.5px solid #ee6a6a; }
+.recording-pill--meeting, .recording-pill--meeting-processing { gap: 12px; border: 2px solid #10b981; padding: 5px; }
+.recording-pill.is-flushing.recording-pill--meeting-processing { opacity: .4; }
+.recording-pill button {
+  display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto;
+  padding: 0; border: 0; margin: 0; outline-offset: -2px; color: inherit;
+  background: transparent; cursor: pointer; -webkit-app-region: no-drag;
+}
+.recording-pill button:focus-visible { outline: 2px solid #a394c7; }
+.recording-pill__primary { flex: 1 1 auto !important; align-self: stretch; min-width: 0; }
+.recording-pill__primary[data-drag-surface] { touch-action: none; }
+.recording-pill button.recording-pill__cancel, .recording-pill button.recording-pill__finish {
+  width: 18px; height: 18px; border-radius: 50%;
+}
+.recording-pill button.recording-pill__cancel { background: #4d4a42; color: #fcfcfb; }
+.recording-pill button.recording-pill__finish { background: #fcfcfb; color: #000; }
+.recording-pill button.recording-pill__meeting-stop { width: 19px; height: 19px; border-radius: 50%; color: #fcfcfb; background: #10b981; }
+.recording-pill__cancel:hover { filter: brightness(1.25); }
+.recording-pill__finish:hover { opacity: .85; }
+.recording-pill__waveform { height: 18px; display: flex; align-items: center; justify-content: center; gap: 2px; pointer-events: none; }
+.recording-pill__waveform > span { width: 2px; height: 2px; border-radius: .5px; background: #fcfcfb; opacity: .4; }
+.recording-pill__waveform.is-active > span { opacity: 1; }
+.recording-pill__waveform.is-meeting > span { background: #10b981; }
+.recording-pill__spinner { position: relative; width: 16px; height: 16px; flex: 0 0 16px; }
+.recording-pill__spinner i { position: absolute; top: 50%; left: calc(50% - 1px); width: 2px; height: 5px; border-radius: 1px; transform-origin: center top; background: #a394c7; animation: recording-pill-spin 1.1s linear infinite; }
+@keyframes recording-pill-spin { 0%, 100% { opacity: 1; } 80% { opacity: .2; } }
+@media (prefers-reduced-motion: reduce) { .recording-pill { transition: none; } .recording-pill__spinner i { animation: none; opacity: .65; } }
+.recording-pill--transforming {
+  position: relative; justify-content: flex-start; gap: 7px; padding: 5px 10px 5px 11px; border-color: #3d3a4a;
+}
+/* A soft sheen sweeps across the pill while the server rewrites the text. */
+.recording-pill--transforming::before {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: linear-gradient(100deg, transparent 20%, rgb(163 148 199 / 28%) 50%, transparent 80%);
+  background-size: 220% 100%; animation: recording-pill-sheen 1.6s ease-in-out infinite;
+}
+.recording-pill__sparkle { flex: 0 0 auto; color: #c4b5f0; }
+.recording-pill__label {
+  position: relative; flex: 1 1 auto; min-width: 0; overflow: hidden; color: #fcfcfb;
+  font: 600 12px/1 system-ui, -apple-system, sans-serif; letter-spacing: -.01em; text-overflow: ellipsis; white-space: nowrap;
+}
+.recording-pill--transforming .recording-pill__spinner { margin-left: auto; }
+@keyframes recording-pill-sheen { from { background-position: 120% 0; } to { background-position: -120% 0; } }
+@media (prefers-reduced-motion: reduce) { .recording-pill--transforming::before { animation: none; opacity: 0; } }
+.recording-pill--push-to-talk, .recording-pill--processing { justify-content: space-between; }
+
+/* Hover actions: separate circles beside the mic that pop in one after another. */
+.recording-overlay__action {
+  display: grid; place-items: center; width: 28px; height: 28px; padding: 0; margin: 0;
+  box-sizing: border-box; border: 1px solid #30302f; border-radius: 50%;
+  color: #fcfcfb; background: #000; cursor: pointer; -webkit-app-region: no-drag;
+  transition: background-color 120ms, border-color 120ms, transform 120ms;
+}
+.recording-overlay__action:hover { background: #1c1c1b; border-color: #8a8a88; transform: scale(1.06); }
+.recording-overlay__action:active { transform: scale(.94); }
+.recording-overlay__action:focus-visible { outline: 2px solid #a394c7; outline-offset: 1px; }
+.recording-overlay__action--transform { color: #e4dcff; }
+.recording-overlay__slot:not(.recording-overlay__slot--pill) { animation: recording-overlay-pop 160ms cubic-bezier(.2,.9,.3,1.3) both; }
+@keyframes recording-overlay-pop { from { opacity: 0; transform: scale(.5); } to { opacity: 1; transform: scale(1); } }
+
+/* Slide-out tooltip: above a bottom bar, toward the screen interior from a side bar. */
+.recording-overlay__tip {
+  --tip-from: translate(-50%, 6px); --tip-to: translate(-50%, 0);
+  position: absolute; bottom: calc(100% + 10px); left: 50%; z-index: 1;
+  display: inline-flex; align-items: center; gap: 8px; padding: 7px 14px;
+  border: 1px solid #30302f; border-radius: 999px; color: #fcfcfb; background: #000;
+  font: 500 13px/1 system-ui, -apple-system, sans-serif; letter-spacing: -.01em; white-space: nowrap;
+  opacity: 0; transform: var(--tip-from); pointer-events: none;
+  transition: opacity 70ms ease-in, transform 180ms cubic-bezier(.2,.8,.2,1);
+}
+/* Outranks the theme-wide kbd chip so the shortcut reads as bold text, not a key cap. */
+.recording-overlay .recording-overlay__tip kbd, :root[data-theme] .recording-overlay__tip kbd { padding: 0; border: 0; font: 700 13px/1 system-ui, -apple-system, sans-serif; color: #fcfcfb; background: none; box-shadow: none; }
+.recording-overlay--left .recording-overlay__tip, .recording-overlay--right .recording-overlay__tip { bottom: auto; top: 50%; }
+.recording-overlay--left .recording-overlay__tip { --tip-from: translate(-6px, -50%); --tip-to: translate(0, -50%); left: calc(100% + 10px); }
+.recording-overlay--right .recording-overlay__tip { --tip-from: translate(6px, -50%); --tip-to: translate(0, -50%); left: auto; right: calc(100% + 10px); }
+.recording-overlay__slot:hover > .recording-overlay__tip, .recording-overlay__slot:focus-within > .recording-overlay__tip { opacity: 1; transform: var(--tip-to); transition: opacity 140ms ease-out 120ms, transform 180ms cubic-bezier(.2,.8,.2,1) 120ms; }
+
+/* Docked to a side, the bar turns 90 degrees: controls stack and waveform bars grow sideways. */
+.recording-overlay--left .recording-pill, .recording-overlay--right .recording-pill { flex-direction: column; }
+.recording-overlay--left .recording-pill--transforming, .recording-overlay--right .recording-pill--transforming { padding: 11px 5px 10px; }
+.recording-overlay--left .recording-pill__label, .recording-overlay--right .recording-pill__label { writing-mode: vertical-rl; }
+.recording-overlay--left .recording-pill--transforming .recording-pill__spinner, .recording-overlay--right .recording-pill--transforming .recording-pill__spinner { margin: auto 0 0; }
+.recording-pill__waveform.is-vertical { width: 18px; height: auto; flex-direction: column; }
+.recording-pill__waveform.is-vertical > span { height: 2px; width: 2px; }
+@media (prefers-reduced-motion: reduce) {
+  .recording-overlay__slot:not(.recording-overlay__slot--pill) { animation: none; }
+  .recording-overlay__tip, .recording-overlay__action { transition: opacity 1ms; }
+  .recording-overlay__slot:hover > .recording-overlay__tip, .recording-overlay__slot:focus-within > .recording-overlay__tip { transform: var(--tip-to); transition: opacity 1ms; }
+}

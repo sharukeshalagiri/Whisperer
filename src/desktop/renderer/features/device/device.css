@@ -1,0 +1,637 @@
+/* Settings feedback shared with the modal; setup screens use .device-error instead. */
+.settings-modal .form-error,
+.settings-modal .form-notice {
+  border-radius: 8px;
+  padding: 10px 12px;
+  line-height: 1.4;
+}
+.settings-modal .form-error {
+  background: #fff0f1;
+  color: #951d30;
+}
+.settings-modal .form-notice {
+  background: #ecf9f0;
+  color: #17653a;
+}
+.settings-heading h1 {
+  margin: 0;
+  font-size: clamp(1.8rem, 4vw, 2.4rem);
+  letter-spacing: -0.04em;
+}
+.settings-section h2 {
+  margin: 0;
+  font-size: 1.15rem;
+  letter-spacing: -0.02em;
+}
+.settings-section > label {
+  font-size: 0.9rem;
+  font-weight: 650;
+}
+
+.settings-page {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding-top: clamp(38px, 7vw, 76px);
+}
+.settings-heading {
+  margin: 0 0 34px;
+}
+.settings-heading h1 {
+  font-size: clamp(2rem, 4.2vw, 2.9rem);
+  font-weight: 650;
+}
+.settings-layout {
+  display: grid;
+  grid-template-columns: 176px minmax(0, 640px);
+  align-items: start;
+  gap: 50px;
+}
+.settings-navigation {
+  display: grid;
+  gap: 3px;
+  position: sticky;
+  top: 24px;
+}
+.settings-navigation button {
+  border: 0;
+  border-radius: 7px;
+  padding: 9px 11px;
+  background: transparent;
+  color: var(--device-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 570;
+  text-align: left;
+}
+.settings-navigation button:hover,
+.settings-navigation button.is-selected {
+  background: #eeecff;
+  color: #4132ba;
+}
+.settings-navigation button:focus-visible,
+.settings-row-button:focus-visible,
+.settings-primary-button:focus-visible,
+.settings-danger-button:focus-visible,
+.settings-row select:focus-visible,
+.settings-dialog input:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--device-focus), transparent 70%);
+  outline-offset: 2px;
+}
+.settings-content {
+  min-width: 0;
+}
+.settings-feedback {
+  margin: 0 0 16px;
+}
+.settings-group {
+  margin: 0 0 30px;
+}
+.settings-group header {
+  margin-bottom: 10px;
+}
+.settings-group h2 {
+  margin: 0;
+  font-size: 1.24rem;
+  letter-spacing: -0.025em;
+}
+.settings-group header p,
+.setting-row p,
+.setting-unavailable {
+  margin: 5px 0 0;
+  color: var(--device-muted);
+  font-size: 0.89rem;
+  line-height: 1.45;
+}
+.settings-rows {
+  overflow: hidden;
+  border: 1px solid var(--device-border);
+  border-radius: 11px;
+  background: var(--device-surface);
+}
+.setting-row {
+  display: flex;
+  min-height: 64px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 22px;
+  padding: 14px 17px;
+}
+.setting-row + .setting-row {
+  border-top: 1px solid var(--device-border);
+}
+.setting-row--stacked {
+  display: grid;
+  align-items: start;
+  gap: 5px;
+}
+.setting-label {
+  display: block;
+  color: var(--device-ink);
+  font-size: 0.93rem;
+  font-weight: 650;
+}
+.setting-readout {
+  overflow: hidden;
+  max-width: 100%;
+  color: var(--device-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.setting-row--select {
+  cursor: pointer;
+}
+.setting-row select {
+  width: min(220px, 48%);
+  min-height: 35px;
+  border: 1px solid var(--device-border);
+  border-radius: 6px;
+  padding: 0 9px;
+  background: var(--device-surface);
+  color: var(--device-ink);
+  font: inherit;
+}
+.setting-row--toggle {
+  cursor: pointer;
+}
+.setting-row--toggle input {
+  width: 37px;
+  height: 22px;
+  margin: 0;
+  accent-color: var(--device-brand);
+  cursor: pointer;
+}
+.setting-row--toggle.is-disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+.setting-row-note {
+  display: block;
+  margin-top: 2px;
+  color: var(--device-muted);
+  font-size: 0.77rem;
+}
+.setting-status {
+  flex: 0 0 auto;
+  border-radius: 99px;
+  padding: 4px 8px;
+  font-size: 0.76rem;
+  font-weight: 650;
+}
+.setting-status.is-good {
+  background: #e5f5ea;
+  color: #166438;
+}
+.setting-status.is-warning {
+  background: #fff2dd;
+  color: #84510a;
+}
+.setting-row--action {
+  align-items: center;
+}
+.settings-row-button,
+.settings-primary-button,
+.settings-danger-button {
+  flex: 0 0 auto;
+  min-height: 34px;
+  border: 1px solid var(--device-border);
+  border-radius: 6px;
+  padding: 6px 11px;
+  background: var(--device-surface);
+  color: var(--device-ink);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 650;
+}
+.settings-primary-button {
+  border-color: var(--device-brand);
+  background: var(--device-brand);
+  color: #fff;
+}
+.settings-danger-button {
+  border-color: #d65a67;
+  color: #a92335;
+}
+.settings-button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 13px 17px;
+}
+.setting-unavailable {
+  margin: 10px 17px 14px;
+}
+.settings-dialog-backdrop {
+  position: fixed;
+  z-index: 20;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgb(22 25 34 / 38%);
+}
+.settings-dialog {
+  width: min(100%, 408px);
+  border: 1px solid var(--device-border);
+  border-radius: 12px;
+  padding: 24px;
+  background: var(--device-surface);
+  box-shadow: 0 22px 65px rgb(15 18 25 / 25%);
+}
+.settings-dialog h2 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+.settings-dialog:not(.shortcut-dialog) > p {
+  margin: 8px 0 20px;
+  color: var(--device-muted);
+  line-height: 1.45;
+}
+.settings-dialog label {
+  display: grid;
+  gap: 7px;
+  color: var(--device-ink);
+  font-size: 0.88rem;
+  font-weight: 650;
+}
+.settings-dialog input {
+  min-height: 38px;
+  border: 1px solid var(--device-border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  background: var(--device-surface);
+  color: var(--device-ink);
+  font: inherit;
+}
+.settings-dialog:not(.shortcut-dialog) footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 9px;
+  margin-top: 23px;
+}
+
+@media (max-width: 650px) {
+  .settings-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .input {
+    border-color: #505561;
+    background: #191b21;
+    color: var(--device-ink);
+  }
+  .button-secondary {
+    background: #292c34;
+    color: var(--device-ink);
+    border-color: #4a4e59;
+  }
+  .button-secondary:hover:not(:disabled) {
+    background: #322d5d;
+    color: #f0efff;
+  }
+  .form-error {
+    background: #48232a;
+    color: #ffc4cb;
+  }
+  .form-notice {
+    background: #173b28;
+    color: #bceecb;
+  }
+}
+
+/* Settings use the hub's compact desktop panel treatment in both themes. */
+.settings-page {
+  display: contents;
+  padding: 0;
+  color: var(--ink);
+}
+.settings-modal {
+  display: grid;
+  grid-template-columns: 210px minmax(0, 1fr);
+  min-height: 0;
+  background: var(--surface);
+}
+.settings-panel {
+  display: contents;
+}
+.settings-navigation {
+  position: relative;
+  /* The older sticky layout above sets top: 24px, which would shift the modal sidebar down. */
+  top: auto;
+  display: grid;
+  align-content: start;
+  min-height: 0;
+  overflow-y: auto;
+  gap: 3px;
+  padding: 22px 9px 54px !important;
+  border-right: 1px solid var(--line);
+  background: var(--canvas);
+}
+.settings-nav-heading {
+  margin: 0 8px 11px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.settings-navigation hr {
+  width: 100%;
+  height: 1px;
+  margin: 13px 0;
+  border: 0;
+  background: var(--line);
+}
+.settings-navigation button {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  border: 0;
+  border-radius: 8px;
+  padding: 9px 10px;
+  color: var(--ink);
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: left;
+}
+.settings-navigation button.is-selected,
+.settings-navigation button:hover {
+  color: var(--ink);
+  background: var(--surface-soft);
+}
+.settings-version {
+  position: absolute;
+  bottom: 18px;
+  left: 18px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.settings-content {
+  min-width: 0;
+  overflow-y: auto;
+  padding: 43px 48px;
+  background: var(--surface);
+}
+.settings-content > h1 {
+  margin: 0 0 26px;
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 25px;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1.18;
+}
+.settings-feedback {
+  margin: 0 0 15px;
+}
+.settings-rows {
+  overflow: hidden;
+  border: 0;
+  border-radius: 12px;
+  background: var(--surface-raised);
+}
+.settings-row {
+  display: flex;
+  min-height: 77px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 16px 20px;
+}
+.settings-row + .settings-row {
+  border-top: 1px solid var(--line);
+}
+.settings-row strong {
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 650;
+}
+.settings-row p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.35;
+}
+.settings-row select {
+  width: 164px;
+  min-height: 36px;
+  border: 0;
+  border-radius: 8px;
+  padding: 0 11px;
+  color: var(--ink);
+  background: var(--surface-soft);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+}
+.settings-row--toggle input {
+  width: 36px;
+  height: 21px;
+  margin: 0;
+  accent-color: var(--accent-strong);
+  cursor: pointer;
+}
+.settings-row--toggle.is-disabled {
+  opacity: 0.55;
+}
+.settings-row--disabled-actions {
+  min-height: 78px;
+}
+.settings-row-button,
+.settings-danger-button,
+.settings-primary-button {
+  width: 164px;
+  min-height: 36px;
+  border: 0;
+  border-radius: 8px;
+  padding: 7px 12px;
+  color: var(--ink);
+  background: var(--surface-soft);
+  cursor: pointer;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 650;
+}
+.settings-danger-button {
+  color: var(--danger);
+}
+.settings-row-button:disabled,
+.settings-danger-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+.settings-primary-button {
+  color: var(--surface);
+  background: var(--accent-strong);
+}
+.settings-unavailable {
+  margin: 0;
+  padding: 15px 20px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.settings-dialog-backdrop {
+  z-index: 60;
+  background: rgb(19 19 18 / 42%);
+}
+.settings-dialog {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  color: var(--ink);
+  background: var(--surface);
+}
+.settings-dialog h2 {
+  font-family: inherit;
+  font-weight: 700;
+}
+.settings-dialog label {
+  color: var(--ink);
+}
+.settings-dialog #erase-local-dialog-body p {
+  margin: 8px 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+.settings-dialog__list {
+  margin: 0 0 4px;
+  padding-left: 20px;
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.6;
+}
+.settings-dialog footer .settings-danger-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+.settings-dialog input,
+.settings-dialog select {
+  min-height: 38px;
+  border: 1px solid var(--line-strong);
+  border-radius: 7px;
+  padding: 8px 10px;
+  color: var(--ink);
+  background: var(--surface);
+  font: inherit;
+}
+@media (max-width: 700px) {
+  .settings-modal {
+    grid-template-columns: 1fr;
+    min-height: auto;
+  }
+  .settings-navigation {
+    position: static;
+    grid-template-columns: repeat(3, max-content);
+    overflow-x: auto;
+    border-right: 0;
+    border-bottom: 1px solid #e9e7e1;
+  }
+  .settings-navigation hr,
+  .settings-nav-heading,
+  .settings-version {
+    display: none;
+  }
+  .settings-content {
+    padding: 30px 20px;
+  }
+  .settings-row {
+    padding: 15px;
+  }
+  .settings-row-button,
+  .settings-danger-button,
+  .settings-primary-button {
+    width: auto;
+  }
+}
+
+/* Settings › MCP: explanation, endpoint card and per-app quick setup. */
+.settings-mcp {
+  display: grid;
+  gap: 16px;
+}
+.settings-mcp__lede,
+.settings-mcp__footnote {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.45;
+}
+.settings-mcp__footnote {
+  font-size: 13px;
+}
+.settings-mcp .settings-section-label {
+  margin: 2px 0 -6px;
+}
+.settings-row--mcp-endpoint {
+  align-items: flex-start;
+}
+.settings-row--mcp-endpoint > div {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+/* Each app is a disclosure: the summary is the row, the snippet unfolds beneath it. */
+.settings-row--mcp-app {
+  display: block;
+  min-height: 0;
+  padding: 0;
+}
+.settings-row--mcp-app > summary {
+  display: flex;
+  min-height: 64px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 20px;
+  cursor: pointer;
+  list-style: none;
+}
+.settings-row--mcp-app > summary::-webkit-details-marker {
+  display: none;
+}
+.settings-row--mcp-app > summary > span {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.settings-row--mcp-app > summary:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--device-focus), transparent 70%);
+  outline-offset: -3px;
+}
+.settings-row--mcp-app > .settings-mcp__snippet,
+.settings-row--mcp-app > .settings-mcp__steps {
+  margin: 0 20px 14px;
+}
+.settings-mcp__endpoint,
+.settings-mcp__snippet {
+  display: block;
+  margin: 10px 0 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--surface-soft);
+  color: var(--ink);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12.5px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.settings-mcp__steps {
+  padding-left: 20px;
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.settings-mcp__steps li + li {
+  margin-top: 4px;
+}
+.settings-mcp__copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
