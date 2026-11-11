@@ -78,6 +78,7 @@ import { LocalServerService, spawnLocalChild } from './runtime/LocalServerServic
 import { freeDiskBytes, RuntimeInstaller, spawnCommand, type RuntimeManifest } from './runtime/RuntimeInstaller';
 import runtimeManifest from './runtime/runtime-manifest.json';
 import { MEETING_SEGMENT_MAX_BYTES, meetingChunkDecision } from './runtime/MeetingCaptureLimits';
+import { finalizeCapture, recoverInterruptedMeetings } from './runtime/MeetingFinalizer';
 
 // Native global shortcuts arrive through main rather than a DOM gesture; allow the owned, muted capture graph to resume.
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
@@ -340,7 +341,8 @@ class DesktopMainRuntime {
   /** Stops application-owned native activity and closes SQLite before process exit. */
   stop(): void {
     this.updates.stop();
-    this.cancelMeeting();
+    // Quitting mid-meeting keeps what was recorded; Resume continues it after the next launch.
+    this.finalizeActiveCapture('the app quitting');
     this.recordingCoordinator.cancel();
     this.holdShortcut.unregister();
     this.platform.unregisterShortcut();
@@ -436,7 +438,11 @@ class DesktopMainRuntime {
     window.webContents.on('console-message', (_event, level, message) => {
       if (level >= 2) this.logger.warn(`[renderer] ${message}`);
     });
-    window.webContents.on('render-process-gone', (_event, details) => this.logger.error(`[renderer gone] ${details.reason}`));
+    window.webContents.on('render-process-gone', (_event, details) => {
+      this.logger.error(`[renderer gone] ${details.reason}`);
+      // The hub owns the meeting recorder; without it the capture can never stop on its own.
+      if (route === 'home') this.finalizeActiveCapture('the window crashing');
+    });
     window.on('unresponsive', () => this.logger.warn('[renderer] window became unresponsive'));
     void window.loadURL(`whisperer://local/index.html#/${route}`);
     return window;
@@ -971,6 +977,7 @@ class DesktopMainRuntime {
       this.sessionRetryDelay = SESSION_RETRY_FIRST_MS;
       this.settings.rememberSessionUser(user.id);
       this.store.setScope({ server: this.settings.requireApiHost(), userId: user.id });
+      this.recoverMeetings();
       void this.meetingSync.sync().then(() => this.emit(CHANNELS.events.meetingsChanged, undefined)).catch(() => undefined);
     } catch (error) {
       if (isUnauthorized(error) && !this.deviceMode()) this.clearSession();
@@ -1037,6 +1044,7 @@ class DesktopMainRuntime {
     if (mode === 'device') {
       this.currentUser = { ...DEVICE_USER };
       this.store.setScope(DEVICE_SCOPE);
+      this.recoverMeetings();
     } else if (this.settings.getSession()) {
       void this.restoreSession().then(() => this.publishState()).catch(() => undefined);
     }
@@ -1925,13 +1933,7 @@ class DesktopMainRuntime {
       this.publishState();
       throw new Error('No meeting audio was captured.');
     }
-    const prior = this.store.getMeeting(id);
-    const roundedDuration = Math.round(durationMs);
-    this.store.saveMeeting({ ...(prior ?? { transcript: '', summary: '', syncState: 'pending', transcriptStatus: 'pending', summaryStatus: 'idle' }), id, title: capture.title, createdAt: prior?.createdAt ?? capture.createdAt, durationMs: (prior?.durationMs ?? 0) + roundedDuration, endedAt: Date.now(), status: 'complete', audioPath: capture.file, syncState: 'pending' });
-    const existingSegment = this.store.listMeetingSegments(id).find((segment) => segment.id === capture.segmentId);
-    this.store.saveMeetingSegment({ id: capture.segmentId, meetingId: id, audioPath: capture.file, contentType, createdAt: capture.createdAt, durationMs: roundedDuration, language: existingSegment?.language ?? (this.settings.get().language || 'en'), status: 'pending' });
-    this.meetingSync.queueSegment(id, capture.segmentId);
-    this.meetingSync.queueFinish(id);
+    finalizeCapture(this.store, this.meetingSync, capture, durationMs, contentType, this.settings.get().language || 'en', Date.now());
     void this.meetingSync.sync().then(() => this.emit(CHANNELS.events.meetingsChanged, undefined)).catch(() => undefined);
     this.emit(CHANNELS.events.meetingsChanged, undefined);
     this.publishState();
@@ -1960,6 +1962,50 @@ class DesktopMainRuntime {
     } catch (error) { this.logger.warn(`Meeting cleanup failed: ${safeMessage(error)}`); }
     this.emit(CHANNELS.events.meetingsChanged, undefined);
     this.publishState();
+  }
+
+  /** Finishes the active meeting from the audio already on disk when the recorder cannot (quit, crash). */
+  private finalizeActiveCapture(reason: string): void {
+    const capture = this.meetingCapture;
+    if (!capture) return;
+    if (capture.bytes === 0) { this.cancelMeeting(); return; }
+    this.meetingCapture = null;
+    this.emit(CHANNELS.events.meetingCaptureCommand, { command: 'cancel', id: capture.id, title: capture.title });
+    try {
+      finalizeCapture(this.store, this.meetingSync, capture, Date.now() - capture.createdAt, capture.contentType, this.settings.get().language || 'en', Date.now());
+      this.logger.warn(`A meeting recording ended because of ${reason}; the audio recorded so far was kept.`);
+    } catch (error) { this.logger.warn(`Meeting finalize failed: ${safeMessage(error)}`); }
+    this.emit(CHANNELS.events.meetingsChanged, undefined);
+    this.publishState();
+  }
+
+  /** Finishes segments a crash or forced quit left recording in the attached scope, keeping their audio. */
+  private recoverMeetings(): void {
+    if (this.meetingCapture || !this.store.hasScope()) return;
+    try {
+      const recovered = recoverInterruptedMeetings(
+        this.store,
+        this.meetingSync,
+        (path) => {
+          if (!this.isContainedMeetingAudio(path)) return null;
+          const info = statSync(path);
+          return { size: info.size, modifiedAt: info.mtimeMs };
+        },
+        (meetingId, segmentId, path) => {
+          if (path && this.isContainedMeetingAudio(path)) rmSync(path, { force: true });
+          this.store.deleteMeetingSegment(segmentId);
+          this.store.discardOutboxForEntity(segmentId);
+          if (this.store.listMeetingSegments(meetingId).length === 0) {
+            this.store.discardOutboxForEntity(meetingId);
+            this.store.deleteMeeting(meetingId);
+          }
+        },
+      );
+      if (recovered.length > 0) {
+        this.logger.warn(`Recovered ${recovered.length} interrupted meeting recording(s).`);
+        this.emit(CHANNELS.events.meetingsChanged, undefined);
+      }
+    } catch (error) { this.logger.warn(`Meeting recovery failed: ${safeMessage(error)}`); }
   }
 
   /** Deletes meeting metadata and its contained audio file. */

@@ -423,6 +423,14 @@ export class LocalStore {
     return rows.map((row) => mapMeetingSegmentRow(row, this.audioDirectory));
   }
 
+  /** Lists this scope's segments still marked as recording, left behind by a crash or a quit. */
+  public listRecordingSegments(): LocalMeetingSegment[] {
+    const rows = this.database.prepare(
+      "SELECT id, meeting_id, audio_relative_path, duration_ms, content_type, language, status, error, created_at FROM meeting_segments WHERE scope_hash = ? AND status = 'recording' ORDER BY created_at ASC, id ASC",
+    ).all(this.requireScope()) as MeetingSegmentRow[];
+    return rows.map((row) => mapMeetingSegmentRow(row, this.audioDirectory));
+  }
+
   /** Removes a single local segment while keeping all other meeting segments untouched. */
   public deleteMeetingSegment(id: string): boolean {
     const result = this.database.prepare('DELETE FROM meeting_segments WHERE scope_hash = ? AND id = ?').run(this.requireScope(), id);
