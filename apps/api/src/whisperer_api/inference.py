@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import io
+import os
 import time
 import wave
 from collections.abc import Callable
@@ -534,8 +535,10 @@ def load_onnx_asr(spec: ModelSpec, path: Path) -> Recognizer:
     Returns:
         Loaded recognizer.
     """
-    # onnxruntime's official builds send usage telemetry (seen on Linux as DNS lookups of a
-    # Microsoft events host). Turn it off before any session exists: Whisperer ships none.
+    # onnxruntime's official builds send usage telemetry: on Linux its 1DS client looked up a
+    # Microsoft events host when a model loaded. ORT_DISABLE_TELEMETRY turns that client off and
+    # must be set before onnxruntime first loads; disable_telemetry_events covers Windows ETW.
+    os.environ.setdefault("ORT_DISABLE_TELEMETRY", "1")
     import_module("onnxruntime").disable_telemetry_events()
     onnx_asr = import_module("onnx_asr")
     recognizer: Recognizer = onnx_asr.load_model(

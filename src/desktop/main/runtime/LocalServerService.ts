@@ -456,7 +456,8 @@ export class LocalServerService {
 
   /** Returns the allowlisted child environment; PYTHON* and unrelated secrets never reach it. */
   private environment(): Record<string, string> {
-    const environment: Record<string, string> = { PYTHONUNBUFFERED: '1', PYTHONIOENCODING: 'utf-8' };
+    // onnxruntime's posix builds send 1DS usage telemetry unless this is set; Whisperer ships none.
+    const environment: Record<string, string> = { PYTHONUNBUFFERED: '1', PYTHONIOENCODING: 'utf-8', ORT_DISABLE_TELEMETRY: '1' };
     for (const name of ALLOWED_ENVIRONMENT) {
       const value = this.options.environment[name];
       if (typeof value === 'string') environment[name] = value;

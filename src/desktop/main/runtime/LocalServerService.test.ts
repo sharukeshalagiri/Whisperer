@@ -152,6 +152,8 @@ describe('LocalServerService', () => {
     expect(spawn!.env.AWS_SECRET_ACCESS_KEY).toBeUndefined();
     expect(spawn!.env.PYTHONPATH).toBeUndefined();
     expect(spawn!.env.HOME).toBe('/home/user');
+    // onnxruntime's Linux and macOS builds ship 1DS telemetry; Whisperer ships none.
+    expect(spawn!.env.ORT_DISABLE_TELEMETRY).toBe('1');
     const configPath = spawn!.args.at(-1)!;
     const configText = readFileSync(configPath, 'utf8');
     if (process.platform !== 'win32') expect(statSync(configPath).mode & 0o777).toBe(0o600);

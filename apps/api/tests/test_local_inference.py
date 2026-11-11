@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import io
 import json
+import os
 import wave
 from pathlib import Path
 
@@ -303,8 +304,16 @@ def test_model_loading_turns_onnxruntime_telemetry_off_first(
     calls: list[str] = []
     fake_ort = types.ModuleType("onnxruntime")
     fake_ort.disable_telemetry_events = lambda: calls.append("telemetry off")  # type: ignore[attr-defined]
+    monkeypatch.delenv("ORT_DISABLE_TELEMETRY", raising=False)
+
+    def load_model(*args: object, **kwargs: object) -> object:
+        calls.append(
+            f"model loaded, ORT_DISABLE_TELEMETRY={os.environ.get('ORT_DISABLE_TELEMETRY')}"
+        )
+        return object()
+
     fake_asr = types.ModuleType("onnx_asr")
-    fake_asr.load_model = lambda *args, **kwargs: calls.append("model loaded") or object()  # type: ignore[attr-defined]
+    fake_asr.load_model = load_model  # type: ignore[attr-defined]
     monkeypatch.setitem(sys.modules, "onnxruntime", fake_ort)
     monkeypatch.setitem(sys.modules, "onnx_asr", fake_asr)
     from whisperer_api.model_store import CATALOG
@@ -313,4 +322,4 @@ def test_model_loading_turns_onnxruntime_telemetry_off_first(
 
     inference.load_onnx_asr(spec, Path())
 
-    assert calls == ["telemetry off", "model loaded"]
+    assert calls == ["telemetry off", "model loaded, ORT_DISABLE_TELEMETRY=1"]
