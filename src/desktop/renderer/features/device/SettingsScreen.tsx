@@ -11,6 +11,8 @@ import { hostnameOf, isDeviceMode, languageModelDestination, meetingAudioDestina
 import { messageFromError, readCapabilities, readSettings, updateDeviceSettings } from './deviceApi'
 import { InferenceForm, LocalServerPanel } from './InferenceSetup'
 import { McpSettings } from './McpSettings'
+import { microphoneLabel, microphoneOptions } from './microphones'
+import type { MicrophoneOption } from './microphones'
 import { useLocalServer } from './useLocalServer'
 import { updateSummary } from './updates'
 
@@ -77,6 +79,8 @@ export function SettingsScreen({
   const [error, setError] = useState<string>()
   const [busy, setBusy] = useState<string>()
   const [languageDraft, setLanguageDraft] = useState(settings.language || 'en')
+  const [microphones, setMicrophones] = useState<MicrophoneOption[]>([])
+  const [microphoneDraft, setMicrophoneDraft] = useState(settings.microphoneId || 'default')
   const [accountFirstName, setAccountFirstName] = useState(() => firstNameValue(state.user?.displayName))
   const [accountLastName, setAccountLastName] = useState(() => lastNameValue(state.user?.displayName))
 
@@ -250,9 +254,21 @@ export function SettingsScreen({
     }
   }
 
+  async function listMicrophones(): Promise<void> {
+    try {
+      setMicrophones(microphoneOptions(await navigator.mediaDevices.enumerateDevices()))
+    } catch {
+      setMicrophones([])
+    }
+  }
+
+  useEffect(() => {
+    void listMicrophones()
+  }, [])
+
   const selectedLanguage =
     LANGUAGES.find(([code]) => code === settings.language)?.[1] ?? settings.language
-  const microphoneName = settings.microphoneId ? 'Selected microphone' : 'System default'
+  const microphoneName = microphoneLabel(microphones, settings.microphoneId)
   const canSync = deviceMode && settings.authenticated && localServer.state === 'ready'
 
   return (
@@ -296,7 +312,11 @@ export function SettingsScreen({
                 action="Change"
                 detail={microphoneName}
                 label="Microphone"
-                onAction={() => setDialog('microphone')}
+                onAction={() => {
+                  setMicrophoneDraft(settings.microphoneId || 'default')
+                  void listMicrophones()
+                  setDialog('microphone')
+                }}
               />
               <SettingsRow
                 action="Change"
@@ -498,12 +518,23 @@ export function SettingsScreen({
           label="Microphone"
           onCancel={() => setDialog(null)}
           onSave={() => {
-            void save({ microphoneId: null }, 'System microphone selected.')
+            void save({ microphoneId: microphoneDraft === 'default' ? null : microphoneDraft }, 'Microphone saved.')
             setDialog(null)
           }}
           title="Microphone"
         >
-          <p>Use the system default microphone. Select a different input during device setup.</p>
+          <select
+            aria-label="Microphone"
+            id="microphone-value"
+            onChange={(event) => setMicrophoneDraft(event.target.value)}
+            value={microphoneDraft}
+          >
+            {(microphones.length ? microphones : [{ deviceId: 'default', label: 'System default' }]).map((option) => (
+              <option key={option.deviceId} value={option.deviceId}>
+                {option.label}
+              </option>
+            ))}
+          </select>
         </EditorDialog>
       ) : null}
       {dialog === 'language' ? (
