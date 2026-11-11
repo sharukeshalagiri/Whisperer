@@ -1,11 +1,11 @@
 import { createHash } from 'node:crypto';
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import Database from 'better-sqlite3';
 import { afterEach, describe, expect, test } from 'vitest';
 
-import { LocalStore } from './LocalStore';
+import { LocalStore, openLocalStore } from './LocalStore';
 import type { LocalStoreScope } from './models';
 
 const scopeA: LocalStoreScope = {
@@ -349,5 +349,37 @@ describe('LocalStore', () => {
         transcript: '',
       }),
     ).toThrow('Audio path must be inside the configured audio directory');
+  });
+});
+
+describe('openLocalStore', () => {
+  test('moves a damaged database aside and starts a fresh one', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'whisperer-local-store-'));
+    const databasePath = join(directory, 'desktop.sqlite');
+    writeFileSync(databasePath, Buffer.alloc(4096, 0));
+
+    const { store, recovered } = openLocalStore({ databasePath });
+    testStores.push({ directory, store });
+
+    expect(recovered).toMatch(/desktop\.sqlite\.corrupt-\d+$/);
+    expect(existsSync(recovered!)).toBe(true);
+    store.setScope(scopeA);
+    expect(store.getStats().noteCount).toBe(0);
+  });
+
+  test('opens a healthy database without touching it', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'whisperer-local-store-'));
+    const databasePath = join(directory, 'desktop.sqlite');
+    const first = new LocalStore({ databasePath });
+    first.setScope(scopeA);
+    first.saveNote({ content: 'kept', id: 'n', pinned: false, summary: '', syncState: 'local', title: 't', updatedAt: 1 });
+    first.close();
+
+    const { store, recovered } = openLocalStore({ databasePath });
+    testStores.push({ directory, store });
+
+    expect(recovered).toBeNull();
+    store.setScope(scopeA);
+    expect(store.getStats().noteCount).toBe(1);
   });
 });

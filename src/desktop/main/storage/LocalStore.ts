@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { mkdirSync } from 'node:fs';
+import { existsSync, mkdirSync, renameSync } from 'node:fs';
 import { dirname, isAbsolute, relative, resolve } from 'node:path';
 
 import Database from 'better-sqlite3';
@@ -906,4 +906,34 @@ function mapMeetingSegmentRow(row: MeetingSegmentRow, audioDirectory: string | u
   };
   if (audioDirectory !== undefined && row.audio_relative_path !== null) segment.audioPath = resolve(audioDirectory, row.audio_relative_path);
   return segment;
+}
+
+/** SQLite result codes that mean the file is not a usable database, as after a power loss. */
+const DAMAGED_DATABASE_CODES = new Set(['SQLITE_NOTADB', 'SQLITE_CORRUPT']);
+
+/**
+ * Open the local store, recovering from a damaged database file.
+ *
+ * The file is a cache plus an outbox; account data lives on its server. A damaged file is moved
+ * aside (with its WAL and shared-memory files) and a fresh database is created, so the app still
+ * opens. Any other error, such as a database from a newer version, is raised unchanged.
+ *
+ * Args:
+ *   options: Store options.
+ * Returns:
+ *   The store, and the path the damaged file was moved to, or null when nothing was wrong.
+ */
+export function openLocalStore(options: LocalStoreOptions): { store: LocalStore; recovered: string | null } {
+  try {
+    return { store: new LocalStore(options), recovered: null };
+  } catch (error) {
+    const code = (error as { code?: unknown }).code;
+    if (typeof code !== 'string' || !DAMAGED_DATABASE_CODES.has(code)) throw error;
+    const aside = `${options.databasePath}.corrupt-${Date.now()}`;
+    renameSync(options.databasePath, aside);
+    for (const suffix of ['-wal', '-shm']) {
+      if (existsSync(options.databasePath + suffix)) renameSync(options.databasePath + suffix, aside + suffix);
+    }
+    return { store: new LocalStore(options), recovered: aside };
+  }
 }

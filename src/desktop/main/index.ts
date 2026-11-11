@@ -64,7 +64,7 @@ import { Logger, redact } from './services/Logger';
 import { SettingsService } from './services/SettingsService';
 import { UpdateService } from './services/UpdateService';
 import { RELEASE_FEED } from '../shared/releases';
-import { LocalStore } from './storage/LocalStore';
+import { LocalStore, openLocalStore } from './storage/LocalStore';
 import { localAssetType, resolveLocalAsset } from './runtime/LocalAssetResolver';
 import { RecordingCoordinator } from './runtime/RecordingCoordinator';
 import { TransformCoordinator } from './runtime/TransformCoordinator';
@@ -143,6 +143,7 @@ class DesktopMainRuntime {
   private currentUser: { id: string; email?: string | null; displayName?: string } | null = null;
   private captureTarget: Awaited<ReturnType<PlatformService['captureTarget']>> = null;
   private sessionRetry: ReturnType<typeof setTimeout> | null = null;
+  private storeRecoveredFrom: string | null = null;
   private sessionRetryDelay = SESSION_RETRY_FIRST_MS;
   private readonly registeredActions = new Set<string>();
   private readonly shortcutCaptureOwners = new Set<number>();
@@ -204,7 +205,10 @@ class DesktopMainRuntime {
     this.logger = new Logger(join(app.getPath('logs'), 'main.log'));
     this.settings = new SettingsService({ directory: dataDirectory, logger: this.logger, safeStorage });
     this.meetingAudioDirectory = join(dataDirectory, 'meeting-audio');
-    this.store = new LocalStore({ databasePath: join(dataDirectory, 'desktop.sqlite'), audioDirectory: this.meetingAudioDirectory });
+    const opened = openLocalStore({ databasePath: join(dataDirectory, 'desktop.sqlite'), audioDirectory: this.meetingAudioDirectory });
+    this.store = opened.store;
+    this.storeRecoveredFrom = opened.recovered;
+    if (opened.recovered) this.logger.warn('The local database was damaged; it was moved aside and a new one was created.');
     this.platform = new PlatformService({
       clipboard,
       environment: process.env,
@@ -316,6 +320,13 @@ class DesktopMainRuntime {
     this.watchAccessibility();
     // A transient offline profile request must never keep the local hub invisible.
     this.showHub();
+    if (this.storeRecoveredFrom) {
+      const notice = {
+        type: 'warning' as const, title: 'Whisperer', message: "Whisperer's local data file was damaged and has been reset.",
+        detail: 'Data on a Whisperer server you use is not affected and syncs back. The damaged file was kept next to the new one.',
+      };
+      void (this.hub ? dialog.showMessageBox(this.hub, notice) : dialog.showMessageBox(notice));
+    }
     // Development builds carry the placeholder package version, so only packaged builds check on their own.
     // The background check contacts GitHub, so it runs only when the user turned it on.
     if (app.isPackaged && this.settings.get().checkUpdatesAutomatically) this.updates.start();
