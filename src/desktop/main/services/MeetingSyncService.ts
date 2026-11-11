@@ -80,8 +80,9 @@ export class MeetingSyncService {
           ? stringAt(JSON.parse(item.payload) as Record<string, unknown>, 'meetingId') : item.entityId;
         const meeting = this.store.getMeeting(meetingId);
         if (meeting) this.store.saveMeeting({ ...meeting, error: safeError(error), syncState: 'error' });
-        // A revision conflict needs a visible rebase, not an endlessly blocking retry of stale text.
-        if (error instanceof ApiError && error.status === 412) this.store.acknowledgeOutbox(item.id);
+        // A revision conflict, a rejected upload or missing audio will never succeed on retry. Drop
+        // the item (the meeting shows the error) so it cannot block every later item forever.
+        if (isPermanentFailure(error)) { this.store.acknowledgeOutbox(item.id); continue; }
         return;
       }
     }
@@ -115,9 +116,9 @@ export class MeetingSyncService {
         const meetingId = stringAt(payload, 'meetingId');
         const segmentId = stringAt(payload, 'segmentId');
         const segment = this.store.listMeetingSegments(meetingId).find((candidate) => candidate.id === segmentId);
-        if (!segment) throw new Error('Meeting segment was not found.');
+        if (!segment) throw new PermanentSyncError('Meeting segment was not found.');
         const audio = this.readSegment(segment);
-        if (!audio) throw new Error('Meeting segment audio is unavailable.');
+        if (!audio) throw new PermanentSyncError('Meeting segment audio is unavailable.');
         response = await this.api.uploadMeetingSegment({
           audio, contentType: segment.contentType, durationMs: segment.durationMs,
           filename: segment.audioPath ? basename(segment.audioPath) : `${segment.id}.webm`, language: segment.language, meetingId, segmentId,
@@ -195,4 +196,19 @@ function numberAt(value: Record<string, unknown>, key: string): number {
 /** Returns a bounded display error without retaining API bodies. */
 function safeError(error: unknown): string {
   return error instanceof Error && error.message ? error.message.slice(0, 500) : 'Meeting synchronization failed.';
+}
+
+/** A local condition that no retry can fix, such as a segment whose audio file is gone. */
+class PermanentSyncError extends Error {}
+
+/**
+ * Whether an outbox failure can never succeed on retry.
+ *
+ * Client errors are permanent, except an expired session (401), a timeout (408) and rate limiting
+ * (429). Network failures and server errors are transient and keep their place in the queue.
+ */
+function isPermanentFailure(error: unknown): boolean {
+  if (error instanceof PermanentSyncError) return true;
+  if (!(error instanceof ApiError) || error.status === undefined) return false;
+  return error.status >= 400 && error.status < 500 && ![401, 408, 429].includes(error.status);
 }

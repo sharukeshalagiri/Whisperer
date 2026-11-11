@@ -77,6 +77,7 @@ import { DataSyncCoordinator } from './runtime/DataSyncCoordinator';
 import { LocalServerService, spawnLocalChild } from './runtime/LocalServerService';
 import { freeDiskBytes, RuntimeInstaller, spawnCommand, type RuntimeManifest } from './runtime/RuntimeInstaller';
 import runtimeManifest from './runtime/runtime-manifest.json';
+import { MEETING_SEGMENT_MAX_BYTES, meetingChunkDecision } from './runtime/MeetingCaptureLimits';
 
 // Native global shortcuts arrive through main rather than a DOM gesture; allow the owned, muted capture graph to resume.
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
@@ -89,7 +90,6 @@ const execFileAsync = promisify(execFile);
 /** Matches electron-builder's appId so tccutil can reset only this application's consent. */
 const MAC_BUNDLE_ID = 'ai.whisperer.private';
 const MAX_AUDIO_BYTES = 25 * 1024 * 1024;
-const MAX_MEETING_AUDIO_BYTES = 512 * 1024 * 1024;
 /** Fixed identity of the on-device account; the local server owns exactly one user. */
 const DEVICE_USER = { id: 'device', displayName: 'This device', email: null } as const;
 /** Store scope for on-device data, stable across loopback port changes and kept apart from every remote account. */
@@ -1868,13 +1868,20 @@ class DesktopMainRuntime {
     this.requireHub(event);
     const capture = this.meetingCapture;
     if (!capture || capture.id !== id) throw new Error('This meeting recording is no longer active.');
-    if (capture.bytes + audio.byteLength > MAX_MEETING_AUDIO_BYTES) {
-      this.cancelMeeting();
-      throw new Error('The meeting recording reached the local size limit and was discarded.');
+    // Keep every segment uploadable: finish the meeting at the server's size cap or the on-device
+    // two-hour limit instead of discarding it. Resume records the rest as a new segment.
+    const decision = meetingChunkDecision(capture.bytes, audio.byteLength, Date.now() - capture.createdAt);
+    if (decision.append) {
+      appendFileSync(capture.file, audio);
+      capture.bytes += audio.byteLength;
     }
-    appendFileSync(capture.file, audio);
-    capture.bytes += audio.byteLength;
     if (capture.status === 'starting') { capture.status = 'recording'; this.publishState(); }
+    if (decision.stop && capture.status !== 'stopping') {
+      this.logger.warn('Meeting recording reached the segment limit and was finished; Resume continues it.');
+      capture.status = 'stopping';
+      this.emit(CHANNELS.events.meetingCaptureCommand, { command: 'stop', id: capture.id, title: capture.title });
+      this.publishState();
+    }
   }
 
   /** Finalizes the active meeting file and its metadata. */
@@ -1948,7 +1955,7 @@ class DesktopMainRuntime {
       : await dialog.showOpenDialog({ properties: ['openFile'], filters: [{ name: 'Audio', extensions: ['webm', 'wav', 'mp3', 'm4a', 'ogg'] }] });
     const source = result.filePaths[0];
     if (result.canceled || !source) return null;
-    if (!statSync(source).isFile() || statSync(source).size > MAX_MEETING_AUDIO_BYTES) throw new Error('Choose an audio file smaller than 512 MB.');
+    if (!statSync(source).isFile() || statSync(source).size > MEETING_SEGMENT_MAX_BYTES) throw new Error('Choose an audio file of 25 MB or less. Split a longer recording and import the parts.');
     const id = randomUUID();
     const segmentId = randomUUID();
     const extension = extname(source).toLowerCase().replace(/[^.a-z0-9]/g, '') || '.audio';

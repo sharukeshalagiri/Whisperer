@@ -84,10 +84,14 @@ function errorMessage(error: unknown): string {
   return error instanceof Error && error.message ? error.message : 'Meeting recording could not be completed.';
 }
 
+/** Opus at 24 kbit/s is ample for speech and keeps a two-hour segment under the 25 MB upload cap. */
+const MEETING_AUDIO_BITS_PER_SECOND = 24_000
+
 /** Picks WebM when the browser advertises a concrete audio-only recording type. */
 function mediaRecorderOptions(): MediaRecorderOptions {
   const preferred = 'audio/webm;codecs=opus';
-  return MediaRecorder.isTypeSupported(preferred) ? { mimeType: preferred } : { mimeType: 'audio/webm' };
+  const mimeType = MediaRecorder.isTypeSupported(preferred) ? preferred : 'audio/webm';
+  return { mimeType, audioBitsPerSecond: MEETING_AUDIO_BITS_PER_SECOND };
 }
 
 /** Samples the already-open meeting stream for the overlay without creating another microphone request. */

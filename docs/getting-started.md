@@ -73,7 +73,7 @@ Global shortcuts are opt in and use a native key hook. Wayland sessions and mous
 
 ## Notetaker
 
-Press `Alt+M` or the pill's Notetaker button to record a meeting from the microphone. Stop it and the server transcribes each segment and writes a summary. Both are yours to edit, and Resume appends a new segment without touching what you changed. Ask anything at the bottom sends one question with the complete saved transcript and summary to the model and shows the answer without saving it.
+Press `Alt+M` or the pill's Notetaker button to record a meeting from the microphone. Stop it and the server transcribes each segment and writes a summary. One recording session holds up to about two hours. At that point Whisperer finishes the meeting by itself and keeps everything recorded; press Resume to continue in a new segment. Imported audio files can be up to 25 MB. Both are yours to edit, and Resume appends a new segment without touching what you changed. Ask anything at the bottom sends one question with the complete saved transcript and summary to the model and shows the answer without saving it.
 
 ![A meeting open on its Summary tab with decisions, follow up items, Resume and Ask anything](../assets/screenshots/desktop-notetaker-summary-dark-1080.webp)
 

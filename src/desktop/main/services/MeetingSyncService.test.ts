@@ -114,4 +114,47 @@ describe('MeetingSyncService', () => {
     expect(api.putDictationMetric).toHaveBeenCalledTimes(1);
     expect(store.getMeeting('meeting')?.transcript).toBe('Conflict draft');
   });
+
+  test('drops a permanently rejected upload and still delivers later work', async () => {
+    const { store, service, api } = fixture();
+    queueSegmentAndMetric(store, service);
+    api.uploadMeetingSegment.mockRejectedValue(new ApiError('Audio uploads are limited to 25 MB.', 413));
+    await service.sync();
+    expect(api.putDictationMetric).toHaveBeenCalledTimes(1);
+    expect(store.listOutbox()).toHaveLength(0);
+    expect(store.getMeeting('meeting')?.syncState).toBe('error');
+    expect(store.getMeeting('meeting')?.error).toContain('25 MB');
+  });
+
+  test('treats missing segment audio as permanent', async () => {
+    const { store, api } = fixture();
+    const service = new MeetingSyncService(api, store, () => null, () => 'a');
+    queueSegmentAndMetric(store, service);
+    await service.sync();
+    expect(api.uploadMeetingSegment).not.toHaveBeenCalled();
+    expect(api.putDictationMetric).toHaveBeenCalledTimes(1);
+    expect(store.listOutbox()).toHaveLength(0);
+  });
+
+  test('keeps order and retries after a transient failure', async () => {
+    const { store, service, api } = fixture();
+    queueSegmentAndMetric(store, service);
+    for (const failure of [new Error('fetch failed'), new ApiError('Busy', 429), new ApiError('Bad gateway', 502), new ApiError('Expired', 401)]) {
+      api.uploadMeetingSegment.mockRejectedValueOnce(failure);
+      await service.sync();
+      expect(api.putDictationMetric).not.toHaveBeenCalled();
+      expect(store.listOutbox()).toHaveLength(2);
+    }
+    await service.sync();
+    expect(api.putDictationMetric).toHaveBeenCalledTimes(1);
+    expect(store.listOutbox()).toHaveLength(0);
+  });
 });
+
+/** Queues one finished meeting segment followed by an unrelated dictation metric. */
+function queueSegmentAndMetric(store: LocalStore, service: MeetingSyncService): void {
+  store.saveMeeting({ id: 'meeting', title: 'Meeting', createdAt: 1, durationMs: 0, transcript: '', summary: '', status: 'complete', syncState: 'pending' });
+  store.saveMeetingSegment({ id: 'segment', meetingId: 'meeting', contentType: 'audio/webm', createdAt: 1, durationMs: 1000, language: 'en', status: 'pending' });
+  service.queueSegment('meeting', 'segment');
+  store.enqueueOutbox({ id: 'metric', kind: 'metric', entityId: 'metric', createdAt: Date.now() + 1, attempts: 0, payload: JSON.stringify({ id: 'event', createdAt: remote.startedAt, durationMs: 1, outputWords: 1, dictionaryReplacements: 0, timeZone: 'UTC' }) });
+}
