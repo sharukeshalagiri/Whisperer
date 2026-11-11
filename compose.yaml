@@ -1,0 +1,79 @@
+name: whisperer
+services:
+  api:
+    image: whisperer-api:0.1.0
+    build:
+      context: .
+      dockerfile: Dockerfile
+    init: true
+    restart: unless-stopped
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    environment:
+      DATABASE_URL: "sqlite:////data/api.sqlite3"
+      SSL_CERT_FILE: /etc/ssl/certs/whisperer-ca.crt
+      OIDC_ISSUER_URL: "${OIDC_ISSUER_URL:-CHANGE_ME}"
+      OIDC_CLIENT_ID: "${OIDC_CLIENT_ID:-CHANGE_ME}"
+      OIDC_CLIENT_SECRET: "${OIDC_CLIENT_SECRET:-CHANGE_ME}"
+      OIDC_SCOPES: "${OIDC_SCOPES:-openid email profile groups}"
+      OIDC_GROUPS_CLAIM: "${OIDC_GROUPS_CLAIM:-groups}"
+      OIDC_ALLOWED_GROUPS: "${OIDC_ALLOWED_GROUPS-}"
+      PUBLIC_URL: "${PUBLIC_URL:-CHANGE_ME}"
+      TOKEN_SECRET: "${TOKEN_SECRET:-CHANGE_ME}"
+      GATEWAY_BASE_URL: "${GATEWAY_BASE_URL:-http://litellm:4000}"
+      GATEWAY_API_KEY: "${GATEWAY_API_KEY:-}"
+      TRANSCRIPTION_MODEL: "${TRANSCRIPTION_MODEL:-whisper-1}"
+      POLISH_MODEL: "${POLISH_MODEL:-gpt-4o-mini}"
+      ACCESS_TOKEN_MINUTES: "${ACCESS_TOKEN_MINUTES:-15}"
+      REFRESH_TOKEN_DAYS: "${REFRESH_TOKEN_DAYS:-30}"
+      OIDC_TIMEOUT_SECONDS: "${OIDC_TIMEOUT_SECONDS:-5}"
+      GATEWAY_TIMEOUT_SECONDS: "${GATEWAY_TIMEOUT_SECONDS:-10}"
+      MEETING_GATEWAY_TIMEOUT_SECONDS: "${MEETING_GATEWAY_TIMEOUT_SECONDS:-300}"
+      DEVICE_AUTHORIZATION_MINUTES: "${DEVICE_AUTHORIZATION_MINUTES:-10}"
+      # Remote MCP stays off unless enabled and every MCP_* prerequisite is set.
+      MCP_ENABLED: "${MCP_ENABLED:-false}"
+      MCP_PUBLIC_URL: "${MCP_PUBLIC_URL-}"
+      MCP_OIDC_CLIENT_ID: "${MCP_OIDC_CLIENT_ID:-CHANGE_ME}"
+      MCP_OIDC_CLIENT_SECRET: "${MCP_OIDC_CLIENT_SECRET:-CHANGE_ME}"
+      MCP_SIGNING_KEY: "${MCP_SIGNING_KEY:-CHANGE_ME}"
+      MCP_STORAGE_DIR: /data/mcp-oauth
+      MCP_ALLOWED_HOSTS: "${MCP_ALLOWED_HOSTS-}"
+      MCP_ALLOWED_ORIGINS: "${MCP_ALLOWED_ORIGINS-}"
+      MCP_ACCESS_TOKEN_MINUTES: "${MCP_ACCESS_TOKEN_MINUTES:-60}"
+    ports:
+      - "${BIND_ADDRESS:-0.0.0.0}:${HOST_PORT:-14318}:4318"
+    volumes:
+      - api-data:/data
+      # Host trust store, including the internal CA that signs the OIDC issuer.
+      - type: bind
+        source: "${CA_BUNDLE_PATH:-/etc/ssl/certs/ca-certificates.crt}"
+        target: /etc/ssl/certs/whisperer-ca.crt
+        read_only: true
+    networks:
+      - gateway
+    healthcheck:
+      # Liveness deliberately does not call /v1/ready: placeholder OIDC keeps auth unavailable.
+      test: ["CMD", "python", "-c", "from urllib.request import urlopen; urlopen('http://127.0.0.1:4318/v1/health', timeout=3).close()"]
+      interval: 15s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+    stop_grace_period: 30s
+    mem_limit: 512m
+    cpus: 1.0
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+volumes:
+  api-data:
+networks:
+  gateway:
+    external: true
+    name: "${GATEWAY_NETWORK:-llm-network}"

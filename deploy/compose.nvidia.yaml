@@ -1,0 +1,45 @@
+# NVIDIA GPU: Linux with the NVIDIA driver and NVIDIA Container Toolkit.
+# The CUDA 12.6.3 build runs on driver 560 or newer. Model defaults live in nvidia.env.
+services:
+  speaches:
+    image: ghcr.io/speaches-ai/speaches:0.9.0-rc.3-cuda-12.6.3
+    environment:
+      WHISPER__INFERENCE_DEVICE: cuda
+      # Cap each ONNX session at 4 GiB and grow only by what is requested.
+      # Uncapped, onnxruntime keeps growing its arena until other GPU users
+      # (Ollama on the same card) fail with out-of-memory errors.
+      UNSTABLE_ORT_OPTS__PROVIDER_OPTS: '{"CUDAExecutionProvider":{"gpu_mem_limit":4294967296,"arena_extend_strategy":"kSameAsRequested"}}'
+    deploy:
+      resources:
+        limits:
+          cpus: "4"
+          memory: 8g
+          pids: 512
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    healthcheck:
+      # Functional probe: transcribe one second of silence. /health can stay
+      # green while a model that ran out of GPU memory returns 500 on every
+      # request. Docker reports, but never restarts, an unhealthy container.
+      test:
+        - CMD
+        - python
+        - -c
+        - >-
+          import io,os,wave,httpx;b=io.BytesIO();w=wave.open(b,'wb');w.setnchannels(1);w.setsampwidth(2);w.setframerate(16000);w.writeframes(bytes(32000));w.close();r=httpx.post('http://127.0.0.1:8000/v1/audio/transcriptions',files={'file':('p.wav',b.getvalue())},data={'model':os.environ['STT_PROBE_MODEL']},timeout=50);raise SystemExit(r.status_code!=200)
+      # Each probe reloads the model, so probe rarely once healthy.
+      interval: 30m
+      timeout: 60s
+      retries: 1
+
+  ollama:
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]

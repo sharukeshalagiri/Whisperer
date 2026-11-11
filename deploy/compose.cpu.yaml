@@ -1,0 +1,20 @@
+# CPU only: any x86-64 or ARM64 Linux host without a supported GPU.
+# Model defaults live in cpu.env.
+services:
+  speaches:
+    image: ghcr.io/speaches-ai/speaches:0.9.0-rc.3-cpu
+    environment:
+      WHISPER__INFERENCE_DEVICE: cpu
+      WHISPER__COMPUTE_TYPE: int8
+    deploy:
+      resources:
+        limits:
+          cpus: "${SPEACHES_CPUS:-4}"
+          memory: 4g
+          pids: 512
+
+  ollama:
+    deploy:
+      resources:
+        limits:
+          memory: 4g

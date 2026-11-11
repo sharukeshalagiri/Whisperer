@@ -1,0 +1,26 @@
+# Gateway routes for the local stack. The API addresses only the two aliases;
+# compose.local.yaml fills each route from the hardware file's model choice.
+model_list:
+  - model_name: whisperer-transcription
+    litellm_params:
+      model: os.environ/STT_ROUTE
+      api_base: http://speaches:8000/v1
+      # speaches runs without API_KEY on the private network; the client still needs a value.
+      api_key: local
+    model_info:
+      mode: audio_transcription
+  - model_name: whisperer-polish
+    litellm_params:
+      model: os.environ/POLISH_ROUTE
+      api_base: os.environ/OLLAMA_API_BASE
+      api_key: local
+    model_info:
+      mode: chat
+
+litellm_settings:
+  # Never store prompts or completions, and send nothing to the vendor.
+  turn_off_message_logging: true
+  telemetry: false
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY

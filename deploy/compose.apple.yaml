@@ -1,0 +1,33 @@
+# Apple silicon (M series) under Docker Desktop, OrbStack or Colima.
+#
+# Containers on macOS run in a Linux ARM64 virtual machine without access to
+# the Apple GPU, so speaches uses its ARM64 CPU build. Parakeet's ONNX model
+# still transcribes faster than real time on M-series cores. Give the Docker VM
+# at least 8 GB of memory. Model defaults live in apple.env.
+#
+# For Metal-accelerated polish, run the native Ollama app and start with
+# OLLAMA_BASE_URL=http://host.docker.internal:11434; `make stack-up` then skips
+# the Ollama container and pulls the model into the native app instead.
+services:
+  speaches:
+    image: ghcr.io/speaches-ai/speaches:0.9.0-rc.3-cpu
+    platform: linux/arm64
+    environment:
+      WHISPER__INFERENCE_DEVICE: cpu
+      WHISPER__COMPUTE_TYPE: int8
+    deploy:
+      resources:
+        limits:
+          cpus: "${SPEACHES_CPUS:-4}"
+          memory: 5g
+          pids: 512
+
+  ollama:
+    platform: linux/arm64
+    deploy:
+      resources:
+        limits:
+          memory: 4g
+
+  ollama-pull:
+    platform: linux/arm64

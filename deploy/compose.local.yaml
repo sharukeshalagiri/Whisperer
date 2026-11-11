@@ -1,0 +1,141 @@
+# Self-hosted inference shared by every local stack. Layer it over the root
+# compose.yaml and exactly one hardware file:
+#
+#   docker compose -f compose.yaml -f deploy/compose.local.yaml -f deploy/compose.<hardware>.yaml up
+#
+# `make stack-up STACK=<cpu|nvidia|apple>` runs that command with the matching
+# deploy/<hardware>.env for model defaults. The hardware file picks the
+# speaches image and its device.
+#
+# Relative paths resolve against the root, the directory of the first file.
+# Model downloads and the first load happen once and persist in named volumes.
+# Nothing here publishes a port except the API itself.
+services:
+  api:
+    environment:
+      GATEWAY_BASE_URL: http://gateway:4000/v1
+      GATEWAY_API_KEY: "${GATEWAY_API_KEY:?set GATEWAY_API_KEY to a private sk- value for the local gateway}"
+      # Stable aliases served by the gateway; the hardware file chooses what backs them.
+      TRANSCRIPTION_MODEL: whisperer-transcription
+      POLISH_MODEL: whisperer-polish
+      # CPU inference is slower than a hosted gateway; 30 is the API's ceiling.
+      GATEWAY_TIMEOUT_SECONDS: "${GATEWAY_TIMEOUT_SECONDS:-30}"
+    # Readiness checks the gateway's model list once at startup, so start last.
+    depends_on:
+      gateway:
+        condition: service_healthy
+
+  # OpenAI-compatible router. The API needs transcription, chat completions and
+  # a model list behind one base URL; speaches and Ollama each serve only part.
+  gateway:
+    image: ghcr.io/berriai/litellm:v1.83.14-stable
+    init: true
+    restart: unless-stopped
+    command: ["--config", "/etc/litellm/config.yaml", "--port", "4000"]
+    environment:
+      LITELLM_MASTER_KEY: "${GATEWAY_API_KEY:?set GATEWAY_API_KEY to a private sk- value for the local gateway}"
+      LITELLM_LOG: ERROR
+      LITELLM_TELEMETRY: "False"
+      DO_NOT_TRACK: "1"
+      STT_ROUTE: "openai/${STT_MODEL:?the hardware file sets STT_MODEL}"
+      POLISH_ROUTE: "openai/${POLISH_MODEL_LOCAL:?the hardware file sets POLISH_MODEL_LOCAL}"
+      OLLAMA_API_BASE: "${OLLAMA_BASE_URL:-http://ollama:11434}/v1"
+    volumes:
+      - type: bind
+        source: ./deploy/litellm.yaml
+        target: /etc/litellm/config.yaml
+        read_only: true
+    networks:
+      - gateway
+    depends_on:
+      speaches:
+        condition: service_healthy
+      ollama-pull:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "from urllib.request import urlopen; urlopen('http://127.0.0.1:4000/health/liveliness', timeout=3).close()"]
+      interval: 15s
+      timeout: 5s
+      start_period: 60s
+      retries: 5
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  speaches:
+    # The hardware file sets the image tag; both builds are multi-arch.
+    restart: unless-stopped
+    # uvicorn's access log carries client addresses and paths; drop it at source.
+    command: ["uvicorn", "--factory", "speaches.main:create_app", "--no-access-log", "--log-level", "critical"]
+    # Privacy boundary: no transcription request detail is written to disk.
+    # Debug through the API, never through logs.
+    logging:
+      driver: "none"
+    environment:
+      # Downloaded during startup, so the first request does not wait on Hugging Face.
+      PRELOAD_MODELS: '["${STT_MODEL}"]'
+      STT_PROBE_MODEL: "${STT_MODEL}"
+      # Seconds a model stays in memory after its last request.
+      STT_MODEL_TTL: "${STT_MODEL_TTL:-900}"
+      LOG_LEVEL: critical
+      # The Gradio UI writes every uploaded file to /tmp/gradio. API only.
+      ENABLE_UI: "false"
+      DO_NOT_TRACK: "1"
+      HF_HUB_DISABLE_TELEMETRY: "1"
+    volumes:
+      - hf-hub-cache:/home/ubuntu/.cache/huggingface/hub
+    networks:
+      - gateway
+    healthcheck:
+      # /health turns green only after PRELOAD_MODELS finished downloading.
+      test: ["CMD", "python", "-c", "import httpx; raise SystemExit(httpx.get('http://127.0.0.1:8000/health', timeout=5).status_code != 200)"]
+      interval: 30s
+      timeout: 10s
+      # First start downloads the model; a 2.5 GB Parakeet pull can take minutes.
+      start_period: 30m
+      start_interval: 15s
+      retries: 3
+
+  # Polish, note summaries and text transformations. Skipped (no profile) when
+  # OLLAMA_BASE_URL points at an Ollama the operator already runs.
+  ollama:
+    image: ollama/ollama:0.40.4
+    profiles: [bundled-ollama]
+    restart: unless-stopped
+    environment:
+      OLLAMA_KEEP_ALIVE: "${OLLAMA_KEEP_ALIVE:-30m}"
+    volumes:
+      - ollama-models:/root/.ollama
+    networks:
+      - gateway
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 15s
+      timeout: 5s
+      start_period: 30s
+      retries: 5
+
+  # One-shot pull of the polish model into whichever Ollama is in use.
+  ollama-pull:
+    image: ollama/ollama:0.40.4
+    restart: "no"
+    entrypoint: ["ollama", "pull", "${POLISH_MODEL_LOCAL}"]
+    environment:
+      OLLAMA_HOST: "${OLLAMA_BASE_URL:-http://ollama:11434}"
+    networks:
+      - gateway
+    depends_on:
+      ollama:
+        condition: service_healthy
+        required: false
+
+volumes:
+  hf-hub-cache:
+  ollama-models:
+
+networks:
+  # A private network for the local stack instead of an external gateway's.
+  gateway: !override
+    name: whisperer-stack

@@ -1,0 +1,21 @@
+# Cloud inference: the API sends audio and text straight to OpenAI, or any
+# provider that serves /audio/transcriptions, /chat/completions and /models
+# under one base URL. No inference runs on this host, so this is the lightest
+# stack. Layer it over the root compose.yaml alone:
+#
+#   docker compose -f compose.yaml -f deploy/compose.cloud.yaml up
+#
+# `make stack-up STACK=cloud` runs that command with deploy/cloud.env, which
+# sets the endpoint and both models.
+services:
+  api:
+    environment:
+      # GATEWAY_API_KEY wins when set; otherwise use the provider's own key name.
+      # `make stack-up` refuses to start when neither is set; Compose would evaluate a
+      # nested ${OPENAI_API_KEY:?} even when GATEWAY_API_KEY is present.
+      GATEWAY_API_KEY: "${GATEWAY_API_KEY:-${OPENAI_API_KEY:-}}"
+
+networks:
+  # Outbound internet only; no external gateway network to join.
+  gateway: !override
+    name: whisperer-stack
