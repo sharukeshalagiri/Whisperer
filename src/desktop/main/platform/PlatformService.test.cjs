@@ -467,3 +467,61 @@ test('parses a Windows target handle with an API Windows PowerShell 5.1 provides
   assert.match(restore.args.at(-1), /\[IntPtr\]\[int64\]::Parse\(\$env:WHISPERER_TARGET_HWND\)/);
   assert.doesNotMatch(restore.args.at(-1), /\[IntPtr\]::Parse/);
 });
+
+/** Electron 44's clipboard: writes commit asynchronously and reads return promises. */
+function asyncClipboard(initial) {
+  return {
+    writes: [],
+    value: initial,
+    writeText(text) {
+      this.writes.push(text);
+      return new Promise((resolve) => setTimeout(() => { this.value = text; resolve(); }, 20));
+    },
+    async readText() { return this.value; },
+  };
+}
+
+test('captures an X11 selection when clipboard writes commit asynchronously', async () => {
+  const { PlatformService } = loadPlatformService();
+  const dependencies = createDependencies({
+    platform: 'linux',
+    environment: { DISPLAY: ':0' },
+    clipboard: asyncClipboard('original clipboard'),
+    execute: async (_file, args) => {
+      if (args[0] === 'getwindowfocus') return { stdout: '123\n' };
+      if (args[0] === 'getwindowpid') return { stdout: '456\n' };
+      if (args[0] === 'key' && args.at(-1) === 'ctrl+c') dependencies.clipboard.value = 'selected source';
+      return { stdout: '' };
+    },
+  });
+  const service = new PlatformService(dependencies);
+  const target = await service.captureTarget();
+
+  const selection = await service.captureSelection(target);
+
+  assert.deepEqual(selection, { text: 'selected source' });
+  assert.equal(dependencies.clipboard.value, 'original clipboard');
+});
+
+test('pastes on X11 only after the dictation is on the clipboard', async () => {
+  const { PlatformService } = loadPlatformService();
+  let clipboardAtPaste = null;
+  const dependencies = createDependencies({
+    platform: 'linux',
+    environment: { DISPLAY: ':0' },
+    clipboard: asyncClipboard('older clipboard'),
+    execute: async (_file, args) => {
+      if (args[0] === 'getwindowfocus') return { stdout: '123\n' };
+      if (args[0] === 'getwindowpid') return { stdout: '456\n' };
+      if (args[0] === 'key' && args.at(-1) === 'ctrl+v') clipboardAtPaste = dependencies.clipboard.value;
+      return { stdout: '' };
+    },
+  });
+  const service = new PlatformService(dependencies);
+  const target = await service.captureTarget();
+
+  const result = await service.insertText('finished dictation', target);
+
+  assert.equal(result.inserted, true);
+  assert.equal(clipboardAtPaste, 'finished dictation');
+});

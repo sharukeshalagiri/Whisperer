@@ -68,8 +68,8 @@ export interface CommandExecutor {
 
 /** Electron clipboard operations used by the platform service. */
 export interface ElectronClipboard {
-  /** Replace the text clipboard with completed dictation text. */
-  writeText(text: string): void;
+  /** Replace the text clipboard. Electron 44 commits the write asynchronously, so callers await it. */
+  writeText(text: string): void | Promise<void>;
   /** Read the current plain-text clipboard without exposing it to the renderer. */
   readText(): string | Promise<string>;
 }
@@ -300,7 +300,7 @@ export class PlatformService {
     if (!capability.available || !await this.isStillFocused(target)) return null;
     const priorClipboard = await this.dependencies.clipboard.readText();
     const sentinel = `whisperer-selection-${randomUUID()}`;
-    this.dependencies.clipboard.writeText(sentinel);
+    await this.dependencies.clipboard.writeText(sentinel);
     try {
       if (!await this.sendCopy(target)) return null;
       const selected = await this.waitForClipboardChange(sentinel);
@@ -309,7 +309,7 @@ export class PlatformService {
     } catch {
       return null;
     } finally {
-      this.dependencies.clipboard.writeText(priorClipboard);
+      await this.dependencies.clipboard.writeText(priorClipboard);
     }
   }
 
@@ -432,7 +432,7 @@ export class PlatformService {
     if (!this.isValidTarget(target)) return { inserted: false, copied: false, reason: `The saved ${this.targetPlatformName(target)} target is invalid.` };
     if (!await this.isStillFocused(target)) return { inserted: false, copied: false, reason: FOCUS_CHANGED };
 
-    this.dependencies.clipboard.writeText(text);
+    await this.dependencies.clipboard.writeText(text);
     try {
       const inserted = await this.sendPaste(target);
       return inserted ? { inserted: true, copied: true } : { inserted: false, copied: true, reason: FOCUS_CHANGED };

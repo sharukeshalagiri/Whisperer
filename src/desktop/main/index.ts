@@ -928,11 +928,11 @@ class DesktopMainRuntime {
     if (action === 'pressEnter') { await this.platform.pressEnter(); return; }
     const latest = this.history().find((entry) => entry.status === 'completed' && entry.text);
     if (!latest) throw new Error('There is no completed transcript yet.');
-    if (action === 'copyLastTranscript') { clipboard.writeText(latest.text); return; }
+    if (action === 'copyLastTranscript') { await clipboard.writeText(latest.text); return; }
     const target = await this.platform.captureTarget();
     const result = await this.platform.insertText(latest.text, target);
     if (!result.inserted) {
-      clipboard.writeText(latest.text);
+      await clipboard.writeText(latest.text);
       throw new Error(result.reason ?? 'Automatic paste unavailable. The last transcript is on the clipboard.');
     }
   }
@@ -1315,7 +1315,7 @@ class DesktopMainRuntime {
     this.handle(CHANNELS.window.close, async (_payload, event) => BrowserWindow.fromWebContents(event.sender)?.close());
     this.handle(CHANNELS.window.showHub, async () => this.showHub());
     this.handle(CHANNELS.window.openScratchpad, async ({ noteId }) => this.openScratchpad(noteId));
-    this.handle(CHANNELS.clipboard.copy, async ({ text }) => clipboard.writeText(text));
+    this.handle(CHANNELS.clipboard.copy, async ({ text }) => { await clipboard.writeText(text); });
     this.handle(CHANNELS.diagnostics.export, async () => this.exportDiagnostics());
     this.handle(CHANNELS.diagnostics.open, async () => { await shell.openPath(app.getPath('logs')); });
     this.handle(CHANNELS.updates.check, async () => this.updates.check());
@@ -1467,7 +1467,7 @@ class DesktopMainRuntime {
         const count = expanded.uses.get(snippet.id);
         if (count) this.store.saveSnippet({ ...snippet, useCount: snippet.useCount + count });
       }
-      clipboard.writeText(text);
+      await clipboard.writeText(text);
       let pasted = false;
       if (this.settings.get().autoPaste) {
         const insertion = await this.platform.insertText(text, this.captureTarget);
@@ -1555,10 +1555,10 @@ class DesktopMainRuntime {
   }
 
   /** Copies a local history display text only after looking it up under the active scope. */
-  private copyHistory(id: string): void {
+  private async copyHistory(id: string): Promise<void> {
     const entry = this.history().find((candidate) => candidate.id === id);
     if (!entry) throw new Error('History entry was not found.');
-    clipboard.writeText(entry.text);
+    await clipboard.writeText(entry.text);
   }
 
   /** Refreshes server-backed notes when online while preserving visibly unsynced local drafts. */
