@@ -106,6 +106,7 @@ function harness(overrides: Partial<LocalServerOptions> & { health?: (instanceId
     environment: { HOME: '/home/user', PATH: '/usr/bin', AWS_SECRET_ACCESS_KEY: 'parent-secret', PYTHONPATH: '/evil' },
     onChange: (status) => statuses.push(status),
     startupTimeoutMs: 5_000,
+    restartDelayMs: 0,
     ...overrides,
   });
   return { service, children, spawns, requests, statuses, directory };
@@ -265,6 +266,25 @@ describe('LocalServerService', () => {
     await vi.waitFor(() => expect(h.children).toHaveLength(4));
     await boot(h);
     await until(h, 'ready');
+  });
+
+  test('restarts a server that stops answering while it still runs', async () => {
+    let healthy = true;
+    const h = harness({
+      healthIntervalMs: 20,
+      health: (instanceId) => healthy ? { status: 'ok', service: 'whisperer', version: '0.1.0', instanceId } : { status: 'hung' },
+    });
+    void h.service.start();
+    await vi.waitFor(() => expect(h.children).toHaveLength(1));
+    await boot(h);
+    await until(h, 'ready');
+    healthy = false;
+    await vi.waitFor(() => expect(h.children[0]!.signals.length).toBeGreaterThan(0), { timeout: 2000 });
+    healthy = true;
+    await vi.waitFor(() => expect(h.children).toHaveLength(2), { timeout: 2000 });
+    await boot(h);
+    await until(h, 'ready');
+    h.children.at(-1)!.exit(0);
   });
 
   test('stop closes stdin, waits for exit and does not count as a crash', async () => {

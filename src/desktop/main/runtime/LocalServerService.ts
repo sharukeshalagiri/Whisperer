@@ -38,6 +38,10 @@ export interface LocalServerOptions {
   onChange: (status: LocalServerStatus) => void;
   startupTimeoutMs?: number;
   maxRestarts?: number;
+  /** How often a ready server is checked; 3 missed checks in a row count as a hang. */
+  healthIntervalMs?: number;
+  /** First automatic restart delay; it doubles with each restart in the budget. */
+  restartDelayMs?: number;
   /** Whether on-device mode is still selected; a late install or restart never starts a server otherwise. */
   shouldRun?: () => boolean;
 }
@@ -63,8 +67,11 @@ interface Launch {
   error: string | null;
   timer: ReturnType<typeof setTimeout> | null;
   settle: (ok: boolean) => void;
+  health?: ReturnType<typeof setInterval>;
 }
 
+/** After this long without trouble, the automatic restart budget is full again. */
+const HEALTHY_RESET_MS = 10 * 60_000;
 const MAX_EVENT_BYTES = 4096;
 const MAX_LOG_LINES = 100;
 const ALLOWED_ENVIRONMENT = [
@@ -328,13 +335,51 @@ export class LocalServerService {
     this.verified = { host, token: launch.token, generation: launch.generation };
     this.startupFailures = 0;
     this.update({ state: 'ready', stage: null, message: 'Running on this device', port: launch.port, progress: null, canRetry: true });
+    this.watchHealth(launch, host);
     await this.refreshInference();
     launch.settle(true);
+  }
+
+  /**
+   * Checks a ready server periodically. A hang (three missed checks) kills the child, which the
+   * exit handler then restarts within the budget. Ten healthy minutes restore the full budget.
+   */
+  private watchHealth(launch: Launch, host: string): void {
+    const readyAt = Date.now();
+    let misses = 0;
+    let checking = false;
+    launch.health = setInterval(() => {
+      if (checking) return;
+      if (this.launch !== launch || launch.stopping) { clearInterval(launch.health); return; }
+      checking = true;
+      void (async () => {
+        let healthy = false;
+        try {
+          const response = await this.options.fetch(`${host}/v1/health`, { redirect: 'error', signal: AbortSignal.timeout(5000) });
+          const body = response.ok ? await response.json() as { instanceId?: unknown } : {};
+          healthy = body.instanceId === launch.instanceId;
+        } catch { healthy = false; }
+        checking = false;
+        if (this.launch !== launch || launch.stopping) return;
+        if (healthy) {
+          misses = 0;
+          if (Date.now() - readyAt > HEALTHY_RESET_MS) this.restarts = 0;
+          return;
+        }
+        misses += 1;
+        if (misses < 3) return;
+        clearInterval(launch.health);
+        this.appendLog('The on-device server stopped responding; restarting it.', launch);
+        void this.terminate(launch, false);
+      })();
+    }, this.options.healthIntervalMs ?? 20_000);
+    launch.health.unref?.();
   }
 
   /** Handles child exit: a planned stop is quiet, a crash restarts within the bounded budget. */
   private onExit(launch: Launch, code: number | null): void {
     if (launch.timer) clearTimeout(launch.timer);
+    if (launch.health) clearInterval(launch.health);
     if (this.launch !== launch) { launch.settle(false); return; }
     this.launch = null;
     const wasReady = this.verified?.generation === launch.generation;
@@ -344,7 +389,12 @@ export class LocalServerService {
       this.restarts += 1;
       this.appendLog(`The on-device server stopped (code ${code ?? 'none'}); restarting (${this.restarts} of ${this.options.maxRestarts ?? 2}).`);
       launch.settle(false);
-      void this.start();
+      // Back off between automatic restarts: 1 s, then 2 s, … within the budget.
+      const delayMs = (this.options.restartDelayMs ?? 1000) * 2 ** (this.restarts - 1);
+      const timer = setTimeout(() => {
+        if (this.launch === null && (!this.options.shouldRun || this.options.shouldRun())) void this.start();
+      }, delayMs);
+      timer.unref?.();
       return;
     }
     let message = wasReady ? 'Local server stopped unexpectedly' : launch.error ?? `The on-device server exited during startup (code ${code ?? 'none'}).`;
