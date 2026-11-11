@@ -255,6 +255,8 @@ export class LocalServerService {
         if (Number.isInteger(event.port) && (event.port as number) > 0 && (event.port as number) < 65536) launch.port = event.port as number;
         break;
       case 'database':
+        // A damaged on-device database was kept aside and replaced; say so in the activity log.
+        if (event.status === 'reset' && typeof event.message === 'string') this.appendLog(this.clean(event.message, 300, launch), launch);
         if (!this.verified) this.update({ stage: 'database', message: 'Preparing the database…' });
         break;
       case 'ready':

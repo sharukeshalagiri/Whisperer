@@ -32,7 +32,12 @@ from whisperer_api.local_config import (
     read_boot_document,
     read_local_config,
 )
-from whisperer_api.local_runtime import LocalProfile, create_local_app, wait_for_parent_exit
+from whisperer_api.local_runtime import (
+    LocalProfile,
+    create_local_app,
+    ensure_usable_database,
+    wait_for_parent_exit,
+)
 from whisperer_api.main import create_app
 from whisperer_api.settings import Settings
 
@@ -819,3 +824,29 @@ def test_dictation_keeps_the_transcript_when_polish_fails(tmp_path: Path) -> Non
         )
     assert response.status_code == 200, response.text
     assert response.json()["text"] == "hello the world"
+
+
+def test_a_damaged_device_database_is_moved_aside_not_fatal(tmp_path: Path) -> None:
+    """A file SQLite cannot read is kept aside, so Local mode can start on a fresh database."""
+    database = tmp_path / "api.sqlite3"
+    database.write_bytes(b"\0" * 302)
+    (tmp_path / "api.sqlite3-wal").write_bytes(b"\0" * 10)
+
+    aside = ensure_usable_database(database)
+
+    assert aside is not None
+    assert aside.exists()
+    assert aside.with_name(aside.name + "-wal").exists()
+    assert not database.exists()
+
+
+def test_a_healthy_device_database_is_left_alone(tmp_path: Path) -> None:
+    """A readable database, or none yet, is not touched."""
+    database = tmp_path / "api.sqlite3"
+    assert ensure_usable_database(database) is None
+    import sqlite3
+
+    with sqlite3.connect(database) as connection:
+        connection.execute("CREATE TABLE t (x INTEGER)")
+    assert ensure_usable_database(database) is None
+    assert database.exists()

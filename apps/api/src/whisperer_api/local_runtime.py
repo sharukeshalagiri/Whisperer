@@ -15,10 +15,12 @@ import asyncio
 import logging
 import os
 import socket
+import sqlite3
 import sys
 import threading
 import time
 from collections.abc import Callable
+from contextlib import closing
 from dataclasses import dataclass, field
 from typing import IO, TYPE_CHECKING
 
@@ -364,6 +366,39 @@ _PARENT_POLL_SECONDS = 0.2
 _ERROR_BROKEN_PIPE = 109
 
 
+def ensure_usable_database(path: Path) -> Path | None:
+    """Move an on-device database SQLite cannot read out of the way, keeping it.
+
+    A power loss can leave the file damaged. Without this the server would fail at every start
+    and Local mode could not be used or reset. The damaged file (with its WAL and shared-memory
+    files) is kept next to the new one, so its data can still be recovered with SQLite tools.
+
+    Args:
+        path: The on-device database file.
+
+    Returns:
+        Where the damaged file was moved, or None when it is readable or does not exist yet.
+    """
+    if not path.exists():
+        return None
+    try:
+        # sqlite3's context manager only ends the transaction; close explicitly so Windows can
+        # rename the file afterwards.
+        with closing(sqlite3.connect(f"file:{path.as_posix()}?mode=ro", uri=True)) as connection:
+            row = connection.execute("PRAGMA quick_check").fetchone()
+        if row is not None and row[0] == "ok":
+            return None
+    except sqlite3.DatabaseError:
+        pass
+    aside = path.with_name(f"{path.name}.corrupt-{int(time.time())}")
+    path.rename(aside)
+    for suffix in ("-wal", "-shm"):
+        extra = path.with_name(path.name + suffix)
+        if extra.exists():
+            extra.rename(aside.with_name(aside.name + suffix))
+    return aside
+
+
 def wait_for_parent_exit(
     stdin: IO[bytes],
     *,
@@ -506,6 +541,16 @@ class LocalServer:
             return 1
         port = listener.getsockname()[1]
         self._events.emit({"event": "bind", "port": port})
+        damaged = ensure_usable_database(config.data_path / "api.sqlite3")
+        if damaged is not None:
+            self._events.emit(
+                {
+                    "event": "database",
+                    "status": "reset",
+                    "message": "The on-device database was damaged. It was kept as "
+                    f"{damaged.name} and a new one was created.",
+                }
+            )
         profile = LocalProfile(config, boot, self._events.emit)
         try:
             app = create_local_app(profile)
