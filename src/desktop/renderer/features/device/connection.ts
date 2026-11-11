@@ -387,6 +387,30 @@ export function speechDestination(settings: PublicSettings): string {
   return `Dictation audio is sent to the speech endpoint at ${host ?? 'the address you entered'}.`
 }
 
+/** Where recorded or imported meeting audio goes and how long it is kept, for the Notetaker settings. */
+export function meetingAudioDestination(settings: PublicSettings): string {
+  if (!isDeviceMode(settings)) {
+    const host = hostnameOf(settings.apiHost)
+    return `Meeting audio, recorded or imported, is uploaded to your Whisperer server${host ? ` at ${host}` : ''}, which keeps it until you delete the meeting. A copy stays on this computer for playback.`
+  }
+  const speech = readInference(settings).speech
+  if (speech.provider === 'onnx') return 'Meeting audio stays on this computer and is transcribed by the server on this device. It is kept until you delete the meeting.'
+  const host = hostnameOf(speech.baseUrl)
+  return `Meeting audio is kept on this computer until you delete the meeting, and is sent to the speech endpoint at ${host ?? 'the address you entered'} for transcription.`
+}
+
+/** Where polish, transforms, summaries and meeting questions send text. */
+export function languageModelDestination(settings: PublicSettings): string {
+  if (!isDeviceMode(settings)) {
+    const host = hostnameOf(settings.apiHost)
+    return `Polish, transforms, note and meeting summaries and meeting questions send text to the language model your Whisperer server${host ? ` at ${host}` : ''} uses.`
+  }
+  const llm = readInference(settings).llm
+  if (llm.provider === 'off') return 'The language model is off, so no text is sent for polish, transforms, summaries or questions.'
+  const host = hostnameOf(llm.baseUrl)
+  return `Polish, transforms, note and meeting summaries and meeting questions send text to the language model at ${host ?? 'the address you entered'}.`
+}
+
 /** What the top-bar connection toggle shows and whether it may be flipped. */
 export interface ConnectionToggleModel {
   /** Which side the switch rests on. */

@@ -7,7 +7,7 @@ import { defaultShortcutBindings, normalizeShortcut, SHORTCUT_ACTION_IDS, SHORTC
 import type { ShortcutAction, ShortcutBindings } from '../../../shared/shortcuts'
 import { ShortcutChips, ShortcutRecorder } from './ShortcutRecorder'
 import { useShortcutSuspension } from './shortcut-keys'
-import { hostnameOf, isDeviceMode, speechDestination } from './connection'
+import { hostnameOf, isDeviceMode, languageModelDestination, meetingAudioDestination, speechDestination } from './connection'
 import { messageFromError, readCapabilities, readSettings, updateDeviceSettings } from './deviceApi'
 import { InferenceForm, LocalServerPanel } from './InferenceSetup'
 import { McpSettings } from './McpSettings'
@@ -365,8 +365,7 @@ export function SettingsScreen({
           {section === 'notetaker' ? (
             <SettingsPanel title="Notetaker">
               <p className="settings-unavailable">
-                Captured meeting audio stays on this device until you delete the meeting. Use Export audio on a
-                meeting to save a copy elsewhere.
+                {meetingAudioDestination(settings)} Use Export audio on a meeting to save a copy elsewhere.
               </p>
             </SettingsPanel>
           ) : null}
@@ -441,8 +440,9 @@ export function SettingsScreen({
           {section === 'privacy' ? (
             <SettingsPanel title="Data and Privacy">
               <p className="settings-unavailable">
-                {speechDestination(settings)} Audio is sent only after you start dictation.
-                Server-side retention and processing controls are not available in the desktop app.
+                {speechDestination(settings)} Audio is sent only when you dictate, record a meeting or import
+                audio. {languageModelDestination(settings)} Server-side retention and processing controls are not
+                available in the desktop app.
               </p>
               <SettingsRow
                 action={busy === 'export' ? 'Preparing…' : 'Export'}

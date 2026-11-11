@@ -77,7 +77,7 @@ Press `Alt+M` or the pill's Notetaker button to record a meeting from the microp
 
 ![A meeting open on its Summary tab with decisions, follow up items, Resume and Ask anything](../assets/screenshots/desktop-notetaker-summary-dark-1080.webp)
 
-Meetings belong to your account on the server. Their audio stays on the computer that recorded it, and importing an audio file creates a meeting the same way. Summary regeneration never overwrites an edit made in the meantime.
+Meetings belong to your account on the server. Recorded and imported audio is uploaded there for transcription and kept until you delete the meeting, and a copy stays on the computer that recorded it for playback. In Local mode the audio stays on this computer, unless you point speech at an HTTP endpoint. Summary regeneration never overwrites an edit made in the meantime.
 
 ## Transforms
 

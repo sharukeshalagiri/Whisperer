@@ -18,6 +18,8 @@ import {
   redactLogLine,
   settingsSectionFromHash,
   speechDestination,
+  meetingAudioDestination,
+  languageModelDestination,
   speechDraft,
   speechDraftDirty,
   speechDraftError,
@@ -124,6 +126,22 @@ describe('privacy copy', () => {
     )
     expect(copy).toContain('asr.example.com')
     expect(copy).not.toMatch(/offline|never leaves/i)
+  })
+
+  it('says a server keeps uploaded meeting audio in Remote mode', () => {
+    const copy = meetingAudioDestination(settings({ connectionMode: 'remote', apiHost: 'https://whisperer.example.com' }))
+    expect(copy).toContain('whisperer.example.com')
+    expect(copy).toMatch(/until you delete the meeting/)
+    expect(copy).not.toMatch(/stays on this (device|computer) until/i)
+  })
+
+  it('names the language model endpoint, or says none is used, in device mode', () => {
+    const off = languageModelDestination(settings({ connectionMode: 'device', inference: { speech: { provider: 'onnx', model: 'm' }, llm: { provider: 'off' } } }))
+    expect(off).toMatch(/off/)
+    const http = languageModelDestination(
+      settings({ connectionMode: 'device', inference: { speech: { provider: 'onnx', model: 'm' }, llm: { provider: 'http', baseUrl: 'http://localhost:11434/v1', model: 'llama', hasApiKey: false } } }),
+    )
+    expect(http).toContain('localhost')
   })
 })
 
