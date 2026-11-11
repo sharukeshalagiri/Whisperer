@@ -344,6 +344,7 @@ class MeetingService:
         self._wake = asyncio.Event()
         self._stopping = asyncio.Event()
         self._worker: asyncio.Task[None] | None = None
+        self._worker_retry_seconds = 5.0
 
     async def start(self) -> None:
         """Create storage and start the one durable processing loop once.
@@ -1300,19 +1301,41 @@ class MeetingService:
             None.
         """
         while not self._stopping.is_set():
-            # SQLite and file I/O stay off the event loop so request commits are not blocked.
-            await asyncio.to_thread(self._recover_expired_leases)
-            segment = await asyncio.to_thread(self._claim_segment)
-            if segment is not None:
-                await self._process_segment(segment)
-                continue
-            summary = await asyncio.to_thread(self._claim_summary)
-            if summary is not None:
-                await self._process_summary(summary)
+            try:
+                if await self._run_worker_pass():
+                    continue
+            except Exception as error:  # one failing pass must not stop all processing
+                # Durable leases make the work safe to retry; log only the type, never content.
+                _LOGGER.warning("Meeting worker pass failed (%s); retrying.", type(error).__name__)
+                with suppress(TimeoutError):
+                    await asyncio.wait_for(
+                        self._stopping.wait(), timeout=self._worker_retry_seconds
+                    )
                 continue
             self._wake.clear()
             with suppress(TimeoutError):
                 await asyncio.wait_for(self._wake.wait(), timeout=1.0)
+
+    async def _run_worker_pass(self) -> bool:
+        """Recover expired leases and process at most one unit of work.
+
+        Args:
+            None.
+
+        Returns:
+            True when a unit was processed, so the loop continues at once.
+        """
+        # SQLite and file I/O stay off the event loop so request commits are not blocked.
+        await asyncio.to_thread(self._recover_expired_leases)
+        segment = await asyncio.to_thread(self._claim_segment)
+        if segment is not None:
+            await self._process_segment(segment)
+            return True
+        summary = await asyncio.to_thread(self._claim_summary)
+        if summary is not None:
+            await self._process_summary(summary)
+            return True
+        return False
 
     def _recover_expired_leases(self) -> None:
         """Return expired work leases to durable pending or failed terminal states.
