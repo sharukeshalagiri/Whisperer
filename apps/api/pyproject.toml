@@ -1,0 +1,43 @@
+[project]
+name = "whisperer-api"
+version = "0.1.0"
+description = "Whisperer FastAPI service"
+requires-python = ">=3.12"
+dependencies = [
+  "authlib>=1.6.5,<2",
+  "fastapi>=0.118.0,<1",
+  # Standalone FastMCP server runtime only: no model-provider SDK extras.
+  "fastmcp-slim[server]==4.1.0",
+  "httpx>=0.28.1,<1",
+  "joserfc>=1.4.0,<2",
+  "pydantic>=2.11.9,<3",
+  # Typed meeting AI calls against the OpenAI-compatible gateway; no Logfire or other providers.
+  "pydantic-ai-slim[openai]==2.57.0",
+  "pydantic-settings>=2.10.1,<3",
+  "python-multipart>=0.0.20,<1",
+  "sqlalchemy>=2.0.43,<3",
+  "sse-starlette>=3.0.0,<4",
+  # Windows has no system IANA tz database; metrics and Local mode need zoneinfo there.
+  "tzdata>=2025.2; sys_platform == 'win32'",
+  "uvicorn>=0.37.0,<1",
+]
+
+[project.optional-dependencies]
+# On-device inference for `serve-local`. Remote deployments do not install these.
+local = [
+  "av>=15.0.0,<20",
+  # cryptography 49 and later publish no Intel macOS wheel; 48 ships universal2.
+  "cryptography<49; sys_platform == 'darwin' and platform_machine == 'x86_64'",
+  "numpy>=2.0.0,<3",
+  "onnx-asr==0.12.0",
+  # onnxruntime stopped publishing Intel macOS wheels after 1.23.
+  "onnxruntime>=1.20.1,<1.24; sys_platform == 'darwin' and platform_machine == 'x86_64'",
+  "onnxruntime>=1.27.0,<2; sys_platform != 'darwin' or platform_machine != 'x86_64'",
+]
+
+[build-system]
+requires = ["hatchling>=1.27.0,<2"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/whisperer_api"]

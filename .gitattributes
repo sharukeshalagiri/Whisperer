@@ -1,0 +1,2 @@
+packages/api-client/src/** linguist-generated=true -whitespace
+packages/api-client/dist/** linguist-generated=true -whitespace

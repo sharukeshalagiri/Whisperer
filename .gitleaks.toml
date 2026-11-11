@@ -1,0 +1,20 @@
+# Secret scanning configuration: `gitleaks dir .` or `gitleaks git .`.
+# Extends the default rules and ignores only the synthetic credentials the test
+# suites use, and only inside test files.
+title = "Whisperer"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Synthetic fixture secrets in tests"
+condition = "AND"
+paths = [
+  '''(^|/)apps/api/tests/''',
+  '''(^|/)src/desktop/.*\.test\.ts$''',
+]
+regexes = [
+  '''^0123456789abcdef0123456789abcdef$''',
+  '''^fedcba9876543210fedcba9876543210$''',
+  '''^sk-1234567890abcdef$''',
+]

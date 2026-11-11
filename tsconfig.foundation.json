@@ -1,0 +1,7 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node"]
+  },
+  "include": ["src/desktop/shared/**/*.ts", "src/desktop/preload/**/*.ts"]
+}

@@ -1,0 +1,56 @@
+[project]
+name = "whisperer-workspace"
+version = "0.0.0"
+requires-python = ">=3.12"
+dependencies = []
+
+[tool.uv.workspace]
+members = ["apps/api"]
+
+[dependency-groups]
+dev = [
+  "mypy>=1.18.2,<1.19",
+  "pytest>=8.4.2,<9",
+  "pytest-asyncio>=1.2.0,<2",
+  "ruff>=0.14.0,<0.15",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["apps/api/tests"]
+addopts = "-ra"
+asyncio_mode = "auto"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+extend-exclude = [".venv"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "B", "SIM", "ANN", "D", "S", "ASYNC", "PTH", "RET", "TC", "RUF"]
+ignore = ["D203", "D213"]
+
+[tool.ruff.lint.per-file-ignores]
+"apps/api/tests/**/*.py" = ["D", "ANN", "ASYNC109", "S101", "S106", "TC003"]
+"apps/api/src/whisperer_api/auth.py" = ["TC001", "TC002", "TC006"]
+"apps/api/src/whisperer_api/legacy_import.py" = ["TC002", "TC003"]
+"apps/api/src/whisperer_api/main.py" = ["ANN401", "B008"]
+"apps/api/src/whisperer_api/persistence.py" = ["TC003"]
+"apps/api/src/whisperer_api/preflight.py" = ["ASYNC109", "TC001"]
+"apps/api/src/whisperer_api/resources.py" = ["TC001", "TC002", "TC003"]
+"apps/api/src/whisperer_api/schemas.py" = ["TC003"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.mypy]
+python_version = "3.12"
+warn_unreachable = true
+no_implicit_reexport = true
+strict = true
+files = ["apps/api/src"]
+explicit_package_bases = true
+mypy_path = ["apps/api/src"]
+
+[[tool.mypy.overrides]]
+module = ["authlib.*"]
+ignore_missing_imports = true
