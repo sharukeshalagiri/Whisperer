@@ -38,7 +38,7 @@ Onboarding configures the computer in front of you and nothing else.
 
 ## Dictate
 
-Hold the shortcut, speak, and release. The text is polished by the language model and pasted at the cursor of the app you were using. Dictation history stays on this device and is listed on the home screen by day, with copy and delete on hover and a search.
+Hold the shortcut, speak, and release. The text is polished by the language model and pasted at the cursor of the app you were using. Whisperer pastes through the clipboard and then puts back the text you had copied. When it cannot paste, the dictation stays on the clipboard instead. Dictation history stays on this device and is listed on the home screen by day, with copy and delete on hover and a search.
 
 ![The Dictation home: a hold down to dictate card, word totals and the dictation history](../assets/screenshots/desktop-dictation-home-dark-1080.webp)
 

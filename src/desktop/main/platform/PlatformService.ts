@@ -139,6 +139,8 @@ const WINDOWS_ENTER = "$ErrorActionPreference = 'Stop'; Add-Type -AssemblyName S
 const MAC_AUTOMATION_PROBE = 'tell application "System Events" to return name of first application process whose frontmost is true';
 const MAC_ENTER = 'tell application "System Events" to key code 36\nreturn "sent"';
 const X11_UNAVAILABLE = 'X11 insertion requires the xdotool utility.';
+/** Targets read the clipboard asynchronously after the paste key; restoring sooner could paste the old text. */
+const CLIPBOARD_RESTORE_DELAY_MS = 750;
 const WAYLAND_UNAVAILABLE = 'Wayland insertion is unavailable because no consent-based adapter is installed.';
 const INSERTION_UNAVAILABLE = 'Automatic insertion is unavailable on this platform.';
 const FOCUS_CHANGED = 'The focused window changed before text could be inserted.';
@@ -432,12 +434,30 @@ export class PlatformService {
     if (!this.isValidTarget(target)) return { inserted: false, copied: false, reason: `The saved ${this.targetPlatformName(target)} target is invalid.` };
     if (!await this.isStillFocused(target)) return { inserted: false, copied: false, reason: FOCUS_CHANGED };
 
+    const previous = await this.readClipboard();
     await this.dependencies.clipboard.writeText(text);
     try {
       const inserted = await this.sendPaste(target);
+      // The paste is done: give the user their clipboard back once the target has read it.
+      if (inserted && previous !== null) void this.restoreClipboard(text, previous);
       return inserted ? { inserted: true, copied: true } : { inserted: false, copied: true, reason: FOCUS_CHANGED };
     } catch {
       return { inserted: false, copied: true, reason: 'The operating system did not allow automatic insertion; text remains on the clipboard.' };
+    }
+  }
+
+  /** Reads the plain-text clipboard, or null when it cannot be read. */
+  private async readClipboard(): Promise<string | null> {
+    try { return await this.dependencies.clipboard.readText(); } catch { return null; }
+  }
+
+  /** Puts the user's previous text back, unless something else changed the clipboard meanwhile. */
+  private async restoreClipboard(pasted: string, previous: string): Promise<void> {
+    await new Promise((resolve) => setTimeout(resolve, CLIPBOARD_RESTORE_DELAY_MS));
+    try {
+      if (await this.dependencies.clipboard.readText() === pasted) await this.dependencies.clipboard.writeText(previous);
+    } catch {
+      // Leaving the dictation on the clipboard is the safe outcome.
     }
   }
 

@@ -1514,14 +1514,16 @@ class DesktopMainRuntime {
         const count = expanded.uses.get(snippet.id);
         if (count) this.store.saveSnippet({ ...snippet, useCount: snippet.useCount + count });
       }
-      await clipboard.writeText(text);
       let pasted = false;
       if (this.settings.get().autoPaste) {
+        // insertText puts the user's clipboard back after a successful paste.
         const insertion = await this.platform.insertText(text, this.captureTarget);
         pasted = insertion.inserted;
         // Without this, a missing permission looks like dictation silently doing nothing.
         if (!pasted) this.logger.warn(`Dictation was copied but not pasted: ${insertion.reason ?? 'unknown reason'}`);
       }
+      // Without a paste, the clipboard is how the dictation reaches the user.
+      if (!pasted) await clipboard.writeText(text);
       const entry: HistoryEntry = {
         appName: null, createdAt: new Date().toISOString(),
         dictionaryReplacements: 'dictionaryReplacements' in result && typeof result.dictionaryReplacements === 'number' ? result.dictionaryReplacements : 0,

@@ -525,3 +525,24 @@ test('pastes on X11 only after the dictation is on the clipboard', async () => {
   assert.equal(result.inserted, true);
   assert.equal(clipboardAtPaste, 'finished dictation');
 });
+
+test('restores the previous clipboard text after a successful paste', async () => {
+  const { PlatformService } = loadPlatformService();
+  const dependencies = createDependencies({
+    platform: 'linux',
+    environment: { DISPLAY: ':0' },
+    clipboard: asyncClipboard('what the user copied'),
+    execute: async (_file, args) => {
+      if (args[0] === 'getwindowfocus') return { stdout: '123\n' };
+      if (args[0] === 'getwindowpid') return { stdout: '456\n' };
+      return { stdout: '' };
+    },
+  });
+  const service = new PlatformService(dependencies);
+  const target = await service.captureTarget();
+
+  const result = await service.insertText('finished dictation', target);
+  assert.equal(result.inserted, true);
+  await new Promise((resolve) => setTimeout(resolve, 1200));
+  assert.equal(dependencies.clipboard.value, 'what the user copied');
+});
