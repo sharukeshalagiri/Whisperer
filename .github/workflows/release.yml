@@ -1,0 +1,108 @@
+name: Release
+
+# A v* tag builds unsigned installers on GitHub-hosted runners and attaches them, with
+# SHA256SUMS, to a draft release. Publishing the draft stays a manual step.
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            script: dist:linux
+            pattern: '*.deb'
+          - runner: windows-2022
+            script: dist:windows
+            pattern: '*.exe'
+          - runner: macos-14
+            script: dist:macos
+            pattern: '*.dmg'
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.18.0
+          cache: npm
+      - name: Check that the tag matches package.json
+        shell: bash
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match package.json version $version"
+            exit 1
+          fi
+      - name: Install locked Node tooling
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Install Electron
+        run: node node_modules/electron/install.js
+      - name: Build unsigned installers
+        run: npm run ${{ matrix.script }}
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - name: Check installer names against the release naming rules
+        shell: bash
+        run: |
+          node --input-type=module -e "
+            import fs from 'node:fs';
+            import { parseAssetName } from './src/desktop/shared/releases.ts';
+            const version = JSON.parse(fs.readFileSync('package.json', 'utf8')).version;
+            const files = fs.readdirSync('dist').filter((name) => /\.(deb|exe|dmg)$/.test(name));
+            if (files.length === 0) throw new Error('No installers were built.');
+            for (const name of files) {
+              const asset = parseAssetName(name);
+              if (!asset || asset.version !== version) throw new Error('Unexpected installer name: ' + name);
+              console.log('ok', name);
+            }"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installers-${{ matrix.runner }}
+          path: dist/${{ matrix.pattern }}
+          if-no-files-found: error
+
+  draft-release:
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: installers
+          merge-multiple: true
+      - name: Write checksums
+        working-directory: installers
+        run: sha256sum -- * > SHA256SUMS && cat SHA256SUMS
+      - name: Write release notes from the changelog
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          awk -v heading="## [$version]" 'index($0, heading) == 1 { found = 1; next } found && /^## \[/ { exit } found' CHANGELOG.md > notes.md
+          if [ ! -s notes.md ]; then echo "::error::CHANGELOG.md has no section for $version"; exit 1; fi
+          {
+            echo
+            echo '### Installers are unsigned'
+            echo
+            echo 'These builds are not code signed or notarized. macOS Gatekeeper and Windows SmartScreen will warn before the first launch; see docs/getting-started.md for how to open them. Verify each download against SHA256SUMS.'
+          } >> notes.md
+      - name: Create the draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          prerelease=()
+          case "$version" in *-*) prerelease=(--prerelease) ;; esac
+          gh release create "$GITHUB_REF_NAME" --draft "${prerelease[@]}" --verify-tag \
+            --title "Whisperer $version" --notes-file notes.md installers/*

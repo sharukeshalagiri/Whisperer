@@ -1,0 +1,51 @@
+name: Verify
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.18.0
+          cache: npm
+      - uses: astral-sh/setup-uv@v6
+        with:
+          # Keep in step with uv in src/desktop/main/runtime/runtime-manifest.json.
+          version: 0.13.1
+          enable-cache: true
+      - name: Check portable command help
+        run: make help
+      - name: Check folder documentation
+        run: make docs-check
+      - name: Install locked Node tooling
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Check desktop types and lint
+        run: make desktop-lint
+      - name: Test desktop
+        run: make desktop-test
+      - name: Build desktop
+        run: make desktop-build
+      - name: Install locked API workspace
+        run: make api-setup
+      - name: Lint API
+        run: make api-lint
+      - name: Test API
+        run: make api-test
+      - name: Verify generated OpenAPI contract
+        run: make api-contract
+      - name: Validate Compose configuration
+        run: docker compose config --quiet
+      - name: Validate every stack
+        run: make stack-config
+      - name: Build hardened API image
+        run: docker build --tag whisperer-api:ci .
