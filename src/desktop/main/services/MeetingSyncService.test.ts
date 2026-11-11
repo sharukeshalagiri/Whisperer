@@ -151,6 +151,28 @@ describe('MeetingSyncService', () => {
   });
 });
 
+describe('server deletions', () => {
+  test('drop a synced meeting from the local cache, with its audio', async () => {
+    const { store, api } = fixture();
+    const removed: string[] = [];
+    const service = new MeetingSyncService(api, store, () => new Uint8Array([1]), () => 'a', (path) => removed.push(path));
+    store.saveMeeting({ id: 'gone', title: 'Deleted elsewhere', createdAt: 1, durationMs: 0, transcript: 'private words', summary: '', status: 'complete', syncState: 'synced' });
+    store.saveMeeting({ id: 'draft', title: 'Not uploaded yet', createdAt: 2, durationMs: 0, transcript: '', summary: '', status: 'complete', syncState: 'pending' });
+    await service.sync();
+    expect(store.getMeeting('gone')).toBeNull();
+    expect(store.getMeeting('draft')).not.toBeNull();
+    expect(store.getMeeting('meeting')).not.toBeNull();
+  });
+
+  test('keep the cache when the listing fails offline', async () => {
+    const { store, api, service } = fixture();
+    api.listMeetings.mockRejectedValue(new Error('offline'));
+    store.saveMeeting({ id: 'kept', title: 'Cached', createdAt: 1, durationMs: 0, transcript: 't', summary: '', status: 'complete', syncState: 'synced' });
+    await service.sync();
+    expect(store.getMeeting('kept')).not.toBeNull();
+  });
+});
+
 /** Queues one finished meeting segment followed by an unrelated dictation metric. */
 function queueSegmentAndMetric(store: LocalStore, service: MeetingSyncService): void {
   store.saveMeeting({ id: 'meeting', title: 'Meeting', createdAt: 1, durationMs: 0, transcript: '', summary: '', status: 'complete', syncState: 'pending' });

@@ -17,6 +17,7 @@ export class MeetingSyncService {
     private readonly store: LocalStore,
     private readonly readSegment: (segment: LocalMeetingSegment) => Uint8Array | null,
     private readonly scopeToken: () => string | null,
+    private readonly removeAudio: (path: string) => void = () => undefined,
   ) {}
 
   /** Enqueues retry-safe creation with a caller-stable meeting identity. */
@@ -91,8 +92,26 @@ export class MeetingSyncService {
       const remote = await this.api.listMeetings();
       if (!this.currentScope(scope)) return;
       for (const item of remote) this.cache(item);
+      this.pruneDeleted(new Set(remote.map((item) => item.id)));
     } catch {
       // A failed refresh does not make a valid scoped cache disappear.
+    }
+  }
+
+  /**
+   * Removes synced meetings the server no longer has (deleted elsewhere, or by a sync tombstone),
+   * with their transcripts and local recordings. Unsent and recording meetings stay.
+   */
+  private pruneDeleted(remoteIds: ReadonlySet<string>): void {
+    for (const local of this.store.listMeetings()) {
+      if (local.syncState !== 'synced' || local.status === 'recording' || remoteIds.has(local.id)) continue;
+      for (const segment of this.store.listMeetingSegments(local.id)) {
+        if (segment.audioPath) this.removeAudio(segment.audioPath);
+        this.store.deleteMeetingSegment(segment.id);
+      }
+      if (local.audioPath) this.removeAudio(local.audioPath);
+      this.store.discardOutboxForEntity(local.id);
+      this.store.deleteMeeting(local.id);
     }
   }
 

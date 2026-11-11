@@ -290,6 +290,7 @@ class DesktopMainRuntime {
       this.store,
       (segment) => segment.audioPath && this.isContainedMeetingAudio(segment.audioPath) ? new Uint8Array(readFileSync(segment.audioPath)) : null,
       () => this.syncScopeToken(),
+      (path) => { try { if (this.isContainedMeetingAudio(path)) rmSync(path, { force: true }); } catch { /* already gone */ } },
     );
     this.transformCoordinator = new TransformCoordinator<NonNullable<Awaited<ReturnType<PlatformService['captureTarget']>>>>({
       captureTarget: () => this.platform.captureTarget(),

@@ -19,6 +19,9 @@ export interface ApiServiceOptions {
 }
 
 /** Represents an HTTP failure without retaining response bodies or credentials. */
+/** Upper bound on meeting list pages (100 meetings each) before giving up. */
+const MAX_MEETING_PAGES = 200;
+
 export class ApiError extends Error {
   /** Args: message is safe display text; status is the HTTP status, if available; code is a stable IPC code. */
   constructor(message: string, readonly status?: number, readonly code?: string) { super(message); this.name = 'ApiError'; }
@@ -197,7 +200,17 @@ export class ApiService {
 
   /** Lists authoritative meetings without widening renderer network access. */
   async listMeetings(): Promise<ApiMeeting[]> {
-    return (await this.authorized<{ items: ApiMeeting[] }>((client) => operations.listMeetings({ client }))).items;
+    // Follow the cursor to the end: callers treat the result as the complete set.
+    const meetings: ApiMeeting[] = [];
+    let cursor: string | undefined;
+    for (let page = 0; page < MAX_MEETING_PAGES; page += 1) {
+      const query = cursor === undefined ? { limit: 100 } : { limit: 100, cursor };
+      const result = await this.authorized<{ items: ApiMeeting[]; nextCursor?: string | null }>((client) => operations.listMeetings({ client, query }));
+      meetings.push(...result.items);
+      if (!result.nextCursor) return meetings;
+      cursor = result.nextCursor;
+    }
+    throw new ApiError('The meeting list is too long to load.');
   }
 
   /** Retrieves one authoritative meeting. */

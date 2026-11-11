@@ -38,6 +38,31 @@ afterEach(() => {
 });
 
 describe('ApiService', () => {
+  test('lists every meeting page, not only the first', async () => {
+    const serviceSettings = settings();
+    serviceSettings.setConnection('https://api.example.test', { accessToken: 'access', refreshToken: 'refresh' });
+    const meeting = (id: string) => ({
+      id, title: id, startedAt: '2026-10-13T00:00:00Z', endedAt: null, durationMs: 0, revision: 1, transcript: '', transcriptRevision: 0,
+      summary: '', summaryRevision: 0, summarySourceRevision: null, summaryStale: false, transcriptStatus: 'complete', summaryStatus: 'idle', error: null, hasAudio: false,
+    });
+    const cursors: Array<string | null> = [];
+    const service = new ApiService({
+      fetch: async (input) => {
+        const url = new URL(input instanceof Request ? input.url : input.toString());
+        if (url.pathname !== '/v1/meetings') throw new Error(`Unexpected ${url.pathname}`);
+        const cursor = url.searchParams.get('cursor');
+        cursors.push(cursor);
+        return cursor === null ? json({ items: [meeting('a')], nextCursor: 'page-2' }) : json({ items: [meeting('b')], nextCursor: null });
+      },
+      onSignOut: () => undefined,
+      openExternal: async () => undefined,
+      settings: serviceSettings,
+    });
+
+    await expect(service.listMeetings()).resolves.toMatchObject([{ id: 'a' }, { id: 'b' }]);
+    expect(cursors).toEqual([null, 'page-2']);
+  });
+
   test('awaits verifier-protected polling and persists only a completed device login', async () => {
     const serviceSettings = settings();
     const opened: string[] = [];
