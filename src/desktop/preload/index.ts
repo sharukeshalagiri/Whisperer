@@ -378,6 +378,9 @@ const desktopApi: DesktopApi = {
     /** Subscribes to native recording commands. */
     onRecordingCommand: (listener: (command: RecordingCommand) => void): Unsubscribe =>
       subscribe(CHANNELS.events.recordingCommand, listener),
+    /** Subscribes to the number of the take the next start command begins. */
+    onRecordingTake: (listener: (take: number) => void): Unsubscribe =>
+      subscribe(CHANNELS.events.recordingTake, listener),
     /** Subscribes to transient RMS envelope measurements. */
     onRecordingMeter: (listener: (meter: RecordingMeter) => void): Unsubscribe =>
       subscribe(CHANNELS.events.recordingMeter, listener),

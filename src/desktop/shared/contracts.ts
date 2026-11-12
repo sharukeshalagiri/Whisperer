@@ -266,6 +266,8 @@ export interface RecordingState {
   startedAt: string | null
   /** Human-readable failure detail, or null without an error. */
   error: string | null
+  /** Number of the latest dictation take main started; hub reports for other takes are ignored. */
+  take?: number
 }
 
 /** Ephemeral microphone measurement; never written to account data or bootstrap storage. */
@@ -413,6 +415,8 @@ export interface RecordingPhaseReport {
   capturePhase: RecordingCapturePhase
   /** Optional human-readable detail for a failed phase. */
   error?: string
+  /** Take the report belongs to, as announced by `onRecordingTake`. */
+  take?: number
 }
 
 /** Represents a locally stored note. */
@@ -998,6 +1002,8 @@ export interface DesktopApi {
     onShortcutAction(listener: (action: 'transform' | 'transformView' | 'startMeeting') => void): Unsubscribe
     /** Subscribes to recording commands issued by native controls or shortcuts. */
     onRecordingCommand(listener: (command: RecordingCommand) => void): Unsubscribe
+    /** Subscribes to the number of the take the next start command begins. */
+    onRecordingTake(listener: (take: number) => void): Unsubscribe
     /** Subscribes to ephemeral hub audio measurements for the provider-free overlay. */
     onRecordingMeter(listener: (meter: RecordingMeter) => void): Unsubscribe
     /** Subscribes to history invalidation after a local change. */

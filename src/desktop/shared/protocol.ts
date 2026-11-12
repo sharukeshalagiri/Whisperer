@@ -153,6 +153,7 @@ export const CHANNELS = {
     state: 'event:state',
     shortcutAction: 'event:shortcut-action',
     recordingCommand: 'event:recording-command',
+    recordingTake: 'event:recording-take',
     recordingMeter: 'event:recording-meter',
     historyChanged: 'event:history-changed',
     notesChanged: 'event:notes-changed',
@@ -203,6 +204,9 @@ export const recordingMeterSchema = z.object({
 
 /** Validates commands delivered from the main process to recording UI. */
 export const recordingCommandSchema = z.enum(['start', 'stop', 'cancel'])
+
+/** Validates the number main gives each dictation take, sent just before its start command. */
+export const recordingTakeSchema = z.number().int().nonnegative()
 
 /** Validates renderer capture and submission phases. */
 export const recordingCapturePhaseSchema = z.enum([
@@ -450,6 +454,7 @@ export const recordingStateSchema = z
     capturePhase: recordingCapturePhaseSchema,
     startedAt: timestampSchema.nullable(),
     error: z.string().nullable(),
+    take: recordingTakeSchema.optional(),
   })
   .strict()
 
@@ -569,6 +574,7 @@ export const recordingPhaseReportSchema = z
   .object({
     capturePhase: recordingCapturePhaseSchema,
     error: z.string().optional(),
+    take: recordingTakeSchema.optional(),
   })
   .strict()
 
@@ -1197,6 +1203,7 @@ export const EVENT_RUNTIME_SPECS = {
   [CHANNELS.events.state]: { payload: bootstrapStateSchema },
   [CHANNELS.events.shortcutAction]: { payload: z.enum(['transform', 'transformView', 'startMeeting']) },
   [CHANNELS.events.recordingCommand]: { payload: recordingCommandSchema },
+  [CHANNELS.events.recordingTake]: { payload: recordingTakeSchema },
   [CHANNELS.events.recordingMeter]: { payload: recordingMeterSchema },
   [CHANNELS.events.historyChanged]: { payload: z.undefined() },
   [CHANNELS.events.notesChanged]: { payload: z.undefined() },

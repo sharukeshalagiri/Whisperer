@@ -4,6 +4,7 @@ import type { RecordingState } from '../../shared/contracts';
 export interface RecordingPhaseReport {
   capturePhase: RecordingState['capturePhase'];
   error?: string;
+  take?: number;
 }
 
 /**
@@ -11,11 +12,14 @@ export interface RecordingPhaseReport {
  *
  * Args:
  *   current: Main's dictation state when the report arrives.
- *   report: The phase the hub reported, with its error text for a failure.
+ *   report: The phase the hub reported, with its error text for a failure and its take.
+ *   take: Number of the latest take main started.
  * Returns:
  *   The next state, or `current` itself when the report must be ignored.
  */
-export function applyRecordingPhaseReport(current: RecordingState, report: RecordingPhaseReport): RecordingState {
+export function applyRecordingPhaseReport(current: RecordingState, report: RecordingPhaseReport, take: number): RecordingState {
+  // A report from an earlier take (late cancel, failure or empty-take report) must not change the current one.
+  if (report.take !== undefined && report.take !== take) return current;
   // A cancelled renderer may finish reporting after main has returned to idle.
   if (current.status === 'idle' && ['failed', 'submitted'].includes(report.capturePhase)) return current;
   // Main records a finished take itself when submit resolves, so "submitted" only confirms a take that

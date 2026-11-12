@@ -165,6 +165,8 @@ class DesktopMainRuntime {
   });
   private shortcutRecordingMode: ShortcutRecordingMode = 'handsfree';
   private recording: RecordingState = { status: 'idle', capturePhase: 'idle', startedAt: null, error: null };
+  /** Number of the latest dictation take; the hub tags its phase reports with it. */
+  private recordingTake = 0;
   private recordingCancellationEpoch = 0;
   /** Maps superseded local draft IDs to their created server IDs for in-flight autosaves. */
   private readonly noteIdAliases = new Map<string, string>();
@@ -1417,7 +1419,7 @@ class DesktopMainRuntime {
   private async bootstrap(): Promise<BootstrapState> {
     const capture = this.meetingCapture;
     const meetingCapture: MeetingCaptureState | null = capture ? { id: capture.id, title: capture.title, status: capture.status, startedAt: capture.startedAt, error: capture.error } : null;
-    return { capabilities: await this.capabilities(), recording: Object.assign({}, this.recording, { mode: this.shortcutRecordingMode }), settings: this.publicSettings(), user: this.publicUser(), version: app.getVersion(), platform: desktopPlatform(), meetingCapture, transform: this.transformActivity, quickTransform: this.quickTransform(), overlayDockEdge: this.overlayDockEdge, updates: this.updates.status(), signInCode: this.api.pendingSignInCode() };
+    return { capabilities: await this.capabilities(), recording: Object.assign({}, this.recording, { mode: this.shortcutRecordingMode, take: this.recordingTake }), settings: this.publicSettings(), user: this.publicUser(), version: app.getVersion(), platform: desktopPlatform(), meetingCapture, transform: this.transformActivity, quickTransform: this.quickTransform(), overlayDockEdge: this.overlayDockEdge, updates: this.updates.status(), signInCode: this.api.pendingSignInCode() };
   }
 
   /** Completes a device login, scopes local data to that exact server and user, then publishes state. */
@@ -1487,6 +1489,9 @@ class DesktopMainRuntime {
     this.captureTarget = null;
     this.shortcutRecordingMode = mode;
     // Reserve before any await so a concurrent start or cancellation sees the in-flight request.
+    // A new take number makes late hub reports for the previous take inapplicable from here on.
+    this.recordingTake += 1;
+    const take = this.recordingTake;
     this.recording = { capturePhase: 'capturing', error: null, startedAt: new Date().toISOString(), status: 'starting' };
     this.showOverlay();
     this.publishState();
@@ -1496,6 +1501,7 @@ class DesktopMainRuntime {
         async () => this.settings.get().autoPaste ? this.platform.captureTarget() : null,
         (target) => {
           this.captureTarget = target;
+          this.emit(CHANNELS.events.recordingTake, take);
           this.emit(CHANNELS.events.recordingCommand, 'start');
           // A release during target lookup preceded hub capture; replay it after the start command.
           if (this.recording.status === 'stopping') this.emit(CHANNELS.events.recordingCommand, 'stop');
@@ -1603,7 +1609,7 @@ class DesktopMainRuntime {
   /** Accepts only a legal hub-reported capture phase and reflects it to state subscribers. */
   private async reportPhase(report: { capturePhase: RecordingState['capturePhase']; error?: string }, event: IpcMainInvokeEvent): Promise<RecordingState> {
     this.requireHub(event);
-    const next = applyRecordingPhaseReport(this.recording, report);
+    const next = applyRecordingPhaseReport(this.recording, report, this.recordingTake);
     if (next === this.recording) return this.recording;
     this.recording = next;
     this.publishState();

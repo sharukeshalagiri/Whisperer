@@ -5,6 +5,7 @@ Parent instructions: [features AGENTS.md](../AGENTS.md).
 - This directory is the sole renderer capture owner. Do not create another microphone pipeline in overlay, tutorial, or a route.
 - `pcm-worklet.js` is intentionally plain JavaScript loaded through Vite's `?url&no-inline` asset query. Keep it free of TypeScript syntax so `AudioContext.audioWorklet.addModule` receives an emitted JavaScript module, not an inlined data URL.
 - UI controls request `recording.start`, `stop`, or `cancel`; only `events.onRecordingCommand` starts, flushes, or cancels local capture. This prevents start-event recursion.
+- Tag every `recording.reportPhase` with the take number main announced through `events.onRecordingTake` before that take's start command. Main ignores reports for any other take, and the hub must return to `idle` synchronously at the end of a take so the next start command is not dropped.
 - Capture with `getUserMedia` using an exact selected microphone ID when provided. Audio remains mono PCM and final submission is a PCM16 WAV.
 - Enforce `MAX_RECORDING_DURATION_MS` and `MAX_RECORDING_AUDIO_BYTES` before appending a frame. Do not submit if the active generation was cancelled.
 - Stop must await the AudioWorklet flush acknowledgement before WAV encoding and submission. Release tracks, graph nodes, timers, and the AudioContext on every terminal path.

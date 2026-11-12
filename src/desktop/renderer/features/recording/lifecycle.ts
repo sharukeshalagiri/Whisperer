@@ -40,16 +40,17 @@ export type TakeOutcome = 'submitted' | 'submitFailed' | 'failed' | 'empty';
 /**
  * The capture phase the hub reports to main when a take ends, or null when main already knows.
  *
- * Main records the result of `recording.submit` itself (success and failure). Reporting it again
- * arrives after main is free for the next take, and would end that take instead.
+ * Main records a successful `recording.submit` itself, so repeating it is redundant. Failures are
+ * always reported: some (a rejected request) never reach main's own bookkeeping, and every report
+ * carries its take, so a late one cannot end a newer take.
  *
  * Args:
  *   outcome: How the take ended.
  * Returns:
- *   `failed` or `idle` for endings only the hub saw, otherwise null.
+ *   `failed` or `idle` to report, or null after a successful submit.
  */
 export function endOfTakeReport(outcome: TakeOutcome): 'failed' | 'idle' | null {
-  if (outcome === 'failed') return 'failed';
+  if (outcome === 'failed' || outcome === 'submitFailed') return 'failed';
   if (outcome === 'empty') return 'idle';
   return null;
 }

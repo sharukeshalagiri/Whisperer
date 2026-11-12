@@ -68,6 +68,8 @@ export interface RecorderProviderProps extends PropsWithChildren {
 
 interface CaptureRuntime {
   generation: number;
+  /** Main's number for this take, echoed in every phase report. */
+  take: number;
   stream: MediaStream | null;
   context: AudioContext | null;
   source: MediaStreamAudioSourceNode | null;
@@ -154,6 +156,10 @@ export function RecorderProvider({
   const controller = useRef(new CaptureGenerationController());
   const runtime = useRef<CaptureRuntime | null>(null);
   const phase = useRef<RecordingPhase>('idle');
+  // Main numbers every take and announces it just before the start command; each phase report
+  // carries its take so a late report for an earlier take cannot change a newer one.
+  const announcedTake = useRef(0);
+  const activeTake = useRef(0);
   /** The take whose transcription failed, kept in memory only so Retry can resubmit it. */
   const failedTake = useRef<{ audio: Uint8Array; durationMs: number } | null>(null);
   const meter = useRef(new AudioMeterEnvelope());
@@ -180,13 +186,14 @@ export function RecorderProvider({
     const reportPhase = recordingBridge()?.recording.reportPhase;
     void reportPhase?.({
       capturePhase,
+      take: activeTake.current,
       ...(capturePhase === 'failed' && update.error ? { error: update.error } : {}),
     }).catch(() => undefined);
     updateState({ phase: nextPhase, ...update });
   }, [updateState]);
 
   /** Ends a take locally right away, telling main only about endings it has not recorded itself. */
-  const finishTake = useCallback((outcome: TakeOutcome, update: Partial<RecorderState>) => {
+  const finishTake = useCallback((outcome: TakeOutcome, update: Partial<RecorderState>, take = activeTake.current) => {
     // Synchronous, so a start command that follows main's submit reply is not dropped as "busy".
     const nextPhase: RecordingPhase = outcome === 'submitted' || outcome === 'empty' ? 'idle' : 'error';
     phase.current = nextPhase;
@@ -194,6 +201,7 @@ export function RecorderProvider({
     if (capturePhase) {
       void recordingBridge()?.recording.reportPhase({
         capturePhase,
+        take,
         ...(capturePhase === 'failed' && update.error ? { error: update.error } : {}),
       }).catch(() => undefined);
     }
@@ -224,14 +232,15 @@ export function RecorderProvider({
     controller.current.cancel();
     const capture = runtime.current;
     runtime.current = null;
+    // Idle before releasing the microphone, so a start that follows the cancel is not dropped.
+    phase.current = 'idle';
+    updateState({ phase: 'idle', level: 0, elapsedMs: 0, audioBytes: WAV_HEADER_BYTES, error: null, result: null, message: 'Recording cancelled.' });
+    void recordingBridge()?.recording.reportPhase({ capturePhase: 'cancelled', take: activeTake.current }).catch(() => undefined);
     if (capture) {
       capture.frames.length = 0;
       capture.frameCount = 0;
       await release(capture);
     }
-    void recordingBridge()?.recording.reportPhase({ capturePhase: 'cancelled' }).catch(() => undefined);
-    phase.current = 'idle';
-    updateState({ phase: 'idle', level: 0, elapsedMs: 0, audioBytes: WAV_HEADER_BYTES, error: null, result: null, message: 'Recording cancelled.' });
   }, [release, updateState]);
 
   const stopCapture = useCallback(async (generation?: number) => {
@@ -252,7 +261,7 @@ export function RecorderProvider({
       capture.processor?.port.postMessage({ type: 'flush', generation: capture.generation });
     });
     if (!controller.current.isCurrent(capture.generation)) return;
-    await recordingBridge()?.recording.reportPhase({ capturePhase: 'captured' });
+    await recordingBridge()?.recording.reportPhase({ capturePhase: 'captured', take: capture.take });
 
     const durationMs = Math.min(
       limits.current.maxDurationMs,
@@ -266,7 +275,7 @@ export function RecorderProvider({
     if (!controller.current.isCurrent(capture.generation)) return;
 
     if (!frames.length) {
-      finishTake('empty', { level: 0, elapsedMs: 0, audioBytes: WAV_HEADER_BYTES, message: 'No audio was captured.', error: null });
+      finishTake('empty', { level: 0, elapsedMs: 0, audioBytes: WAV_HEADER_BYTES, message: 'No audio was captured.', error: null }, capture.take);
       return;
     }
 
@@ -289,12 +298,12 @@ export function RecorderProvider({
         result: result ?? null,
         message: result?.historyEntry.pasted ? 'Dictation completed and pasted.' : 'Dictation completed and copied.',
         error: null,
-      });
+      }, capture.take);
     } catch (error) {
       if (controller.current.isCurrent(capture.generation)) {
         // Keep the take, so Retry sends the same audio instead of asking the user to repeat it.
         if (audio && audio.byteLength <= limits.current.maxAudioBytes) failedTake.current = { audio: audio.slice(), durationMs };
-        finishTake(submitFailed ? 'submitFailed' : 'failed', { level: 0, message: errorMessage(error), error: errorMessage(error) });
+        finishTake(submitFailed ? 'submitFailed' : 'failed', { level: 0, message: errorMessage(error), error: errorMessage(error) }, capture.take);
       }
     } finally {
       audio?.fill(0);
@@ -317,7 +326,6 @@ export function RecorderProvider({
         message: result?.historyEntry.pasted ? 'Dictation completed and pasted.' : 'Dictation completed and copied.', error: null,
       });
     } catch (error) {
-      // Only submit can fail here, and main has already recorded that failure.
       finishTake('submitFailed', { level: 0, message: errorMessage(error), error: errorMessage(error) });
     }
   }, [finishTake, report]);
@@ -328,9 +336,11 @@ export function RecorderProvider({
     failedTake.current?.audio.fill(0);
     failedTake.current = null;
     const generation = controller.current.begin();
+    activeTake.current = announcedTake.current;
     meter.current.reset();
     const capture: CaptureRuntime = {
       generation,
+      take: activeTake.current,
       stream: null,
       context: null,
       source: null,
@@ -472,13 +482,17 @@ export function RecorderProvider({
       if (command === 'stop') void stopCapture();
       if (command === 'cancel') void cancelCapture();
     });
+    const unsubscribeTake = bridge?.events.onRecordingTake(take => { announcedTake.current = take; });
     const unsubscribeState = bridge?.events.onState(nextState => {
-      if (nextState.recording.status === 'error' && phase.current !== 'error') {
+      // State is published asynchronously; an error that belongs to an earlier take is stale.
+      const otherTake = nextState.recording.take !== undefined && nextState.recording.take !== activeTake.current;
+      if (nextState.recording.status === 'error' && phase.current !== 'error' && !otherTake) {
         report('error', { message: nextState.recording.error ?? 'Recording could not be completed.', error: nextState.recording.error ?? 'Recording could not be completed.' });
       }
     });
     return () => {
       unsubscribe?.();
+      unsubscribeTake?.();
       unsubscribeState?.();
     };
   }, [cancelCapture, report, startCapture, stopCapture]);

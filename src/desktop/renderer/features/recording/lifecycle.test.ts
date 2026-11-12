@@ -3,12 +3,12 @@ import { describe, expect, it } from 'vitest';
 import { CaptureGenerationController, endOfTakeReport, isCapturing, retryAction } from './lifecycle';
 
 describe('endOfTakeReport', () => {
-  it('does not repeat a submit result main already recorded, so it cannot end the next take', () => {
+  it('does not repeat a successful submit, which main already recorded', () => {
     expect(endOfTakeReport('submitted')).toBeNull();
-    expect(endOfTakeReport('submitFailed')).toBeNull();
   });
 
-  it('reports endings only the hub saw', () => {
+  it('reports every failure, including a submit that never reached main, and empty takes', () => {
+    expect(endOfTakeReport('submitFailed')).toBe('failed');
     expect(endOfTakeReport('failed')).toBe('failed');
     expect(endOfTakeReport('empty')).toBe('idle');
   });
