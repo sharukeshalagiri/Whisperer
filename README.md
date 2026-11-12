@@ -18,7 +18,7 @@
 </p>
 
 <p align="center">
-  <img src="assets/screenshots/desktop-demo-dark-900.gif" alt="Dictating into a mail window, applying a transform in place with its before and after review, opening a meeting summary, and Settings, Inference in Local mode" width="100%">
+  <img src="assets/screenshots/desktop-demo-light-900.gif" alt="Local mode: a spoken sentence is transcribed on this computer and pasted into a separate mail window, then appears in History and Insights" width="100%">
 </p>
 
 Hold a shortcut, speak, and Whisperer types polished text into whatever app has focus. Record a meeting and get a transcript, an editable summary and answers to questions about what was said. Everything runs against a FastAPI server you control, or, with **Continue without signing in**, against the same server running on your own computer with on-device speech recognition.
@@ -28,7 +28,7 @@ Hold a shortcut, speak, and Whisperer types polished text into whatever app has 
 - **No telemetry.** No analytics, crash reporting or tracing. Diagnostics stay in a local log file.
 - **Honest about data flow.** The UI says where audio and text are sent. Any HTTP endpoint you configure receives them, even on localhost.
 
-The demo above is a real recording of a Linux build against synthetic fixture data. The text is pasted into a separate window through the actual X11 insertion path.
+The demo above is a real recording of the released 0.2.0-beta.2 Linux build in Local mode. A synthetic spoken sentence is transcribed on the computer by the Whisper base model and pasted into a separate window through the actual X11 insertion path.
 
 ## Why it's interesting
 
