@@ -5,7 +5,7 @@ description = "Whisperer FastAPI service"
 requires-python = ">=3.12"
 dependencies = [
   "authlib>=1.6.5,<2",
-  "fastapi>=0.118.0,<1",
+  "fastapi>=0.162.2,<1",
   # Standalone FastMCP server runtime only: no model-provider SDK extras.
   "fastmcp-slim[server]==4.1.6",
   "httpx>=0.28.1,<1",
