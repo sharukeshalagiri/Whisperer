@@ -123,6 +123,7 @@ The November 2026 audit's critical, high and medium findings are fixed. These lo
 
 - Physical-device verification of capture, permissions, shortcuts and insertion on macOS, Windows and Linux X11, and Apple Silicon runs.
 - Local mode installs and packaged-build runs on macOS arm64 and x64, Windows x64 and Linux arm64, with speech timing measurements.
+- A dictation latency benchmark (stop to text) for the packaged build, and an upgrade check from each earlier release on every platform. Neither was measured for 0.2.0-beta.2.
 - Signed and notarized builds, then in-app updates.
 - Wayland insertion through a consented portal or compositor adapter.
 - Server-side splitting of large imported audio files.

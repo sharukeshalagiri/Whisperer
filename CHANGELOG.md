@@ -40,6 +40,7 @@ A security, privacy and reliability release from a full audit and end-to-end run
 - Starting while the server is unreachable keeps your history, notes, snippets and dictation working, and reconnects when the server is back.
 - A polish failure no longer discards a successful transcription.
 - Retry after a failed transcription sends the same recording again instead of asking you to repeat it.
+- Starting a dictation right after the previous one finished no longer fails with "No recording is active."
 - The server's meeting worker keeps running after an unexpected error.
 - The on-device server is restarted when it stops responding, with a pause between restarts.
 - A damaged local database or settings file no longer stops the app or Local mode from starting. The damaged file is kept next to a fresh one, and settings come back from their last good copy.
