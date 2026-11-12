@@ -41,8 +41,8 @@ The demo above is a real recording of a Linux build against synthetic fixture da
 
 ## Features
 
-- **System-wide dictation.** Hold to talk or toggle hands-free. The text is inserted into the focused app on macOS, Windows and Linux X11, with a clipboard fallback where insertion is not available. [Get started](docs/getting-started.md#dictate)
-- **Polish, dictionary and snippets.** An optional language model cleans up each dictation, a personal dictionary fixes names and jargon, and snippets expand saved text.
+- **System-wide dictation.** Hold to talk or toggle hands-free. The text is inserted into the focused app, with a clipboard fallback where insertion is not available, such as Wayland. Insertion is verified end to end on Linux X11; on Windows and macOS it is implemented but not yet verified end to end (see the [roadmap](docs/roadmap.md)). [Get started](docs/getting-started.md#dictate)
+- **Polish, dictionary and snippets.** A personal dictionary fixes names and jargon, and snippets expand saved text. Polish, which cleans up each dictation, needs a language model you configure, such as Ollama.
 - **Transforms.** Apply a saved instruction to selected text in any app, then review the before and after. [Transforms](docs/getting-started.md#transforms)
 - **Notetaker.** Record a meeting from the microphone, get a transcript and an editable summary, and ask questions answered from the saved meeting. [Notetaker](docs/getting-started.md#notetaker)
 - **Read-only MCP endpoint.** Let an MCP client on your machine list, read and ask about your meetings, signed in through your identity provider. [Connect your AI app](docs/mcp.md)
@@ -86,8 +86,8 @@ flowchart LR
 
 | Layer | Technologies |
 | --- | --- |
-| Desktop | Electron 44.7, electron-vite 5, React 19.3, TypeScript 6.0, Tailwind CSS 4.3, TanStack Query 5, Zod 4.6, better-sqlite3 13, uiohook-napi 1.5 |
-| Backend | Python 3.12, FastAPI 0.143, Uvicorn, SQLAlchemy 2.1, pydantic 2.14 and pydantic-settings, Authlib 1.8, joserfc, pydantic-ai 2.57, FastMCP 4.1 |
+| Desktop | Electron 44.10, electron-vite 5, React 19.3, TypeScript 6.0, Tailwind CSS 4.3, TanStack Query 5, Zod 4.6, better-sqlite3 13, uiohook-napi 1.5 |
+| Backend | Python 3.12, FastAPI 0.143, Uvicorn, SQLAlchemy 2.1, pydantic 2.14 and pydantic-settings, Authlib 1.9, joserfc, pydantic-ai 2.57, FastMCP 4.1 |
 | Inference | onnx-asr 0.12, ONNX Runtime, NumPy, PyAV, or any OpenAI-compatible gateway (OpenAI, LiteLLM, Ollama, speaches) |
 | Tooling | uv, npm, GNU Make, Ruff, mypy `--strict`, pytest, ESLint, Prettier, Vitest, node:test, Playwright (Electron driver), hey-api, electron-builder 26, Docker Compose, GitHub Actions |
 
