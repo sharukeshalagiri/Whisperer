@@ -41,7 +41,7 @@ The demo above is a real recording of a Linux build against synthetic fixture da
 
 ## Features
 
-- **System-wide dictation.** Hold to talk or toggle hands-free. The text is inserted into the focused app, with a clipboard fallback where insertion is not available, such as Wayland. Insertion is verified end to end on Linux X11; on Windows and macOS it is implemented but not yet verified end to end (see the [roadmap](docs/roadmap.md)). [Get started](docs/getting-started.md#dictate)
+- **System-wide dictation.** Hold to talk or toggle hands-free. The text is inserted into the focused app, with a clipboard fallback where insertion is not available, such as Wayland. Insertion is verified end to end on Linux X11 and Windows with the packaged app, a virtual microphone and a separate text window; on macOS it is implemented but not yet verified end to end (see the [roadmap](docs/roadmap.md)). [Get started](docs/getting-started.md#dictate)
 - **Polish, dictionary and snippets.** A personal dictionary fixes names and jargon, and snippets expand saved text. Polish, which cleans up each dictation, needs a language model you configure, such as Ollama.
 - **Transforms.** Apply a saved instruction to selected text in any app, then review the before and after. [Transforms](docs/getting-started.md#transforms)
 - **Notetaker.** Record a meeting from the microphone, get a transcript and an editable summary, and ask questions answered from the saved meeting. [Notetaker](docs/getting-started.md#notetaker)
@@ -158,7 +158,7 @@ make stack-config     # validate every Compose stack
 make docs-check       # folder AGENTS.md, CLAUDE.md shims and README diagrams
 ```
 
-CI runs these on every pull request and every push to `main`, then validates `compose.yaml` and builds the hardened API image. CodeQL scans the TypeScript and Python code once the repository is public, and Dependabot proposes weekly grouped updates. `node tools/drive-desktop.mjs` drives the built app end to end against a loopback fixture with a disposable profile.
+CI runs these on every pull request and every push to `main`, then validates `compose.yaml` and builds the hardened API image. CodeQL scans the TypeScript and Python code, and Dependabot proposes weekly grouped updates. `node tools/drive-desktop.mjs` drives the built app end to end against a loopback fixture with a disposable profile.
 
 ## Project structure
 

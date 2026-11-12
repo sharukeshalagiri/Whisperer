@@ -8,9 +8,9 @@ Whisperer is in beta. This page records what has been verified on which platform
 | --- | --- | --- | --- |
 | Desktop build and unit tests | Verified | Built, not run on Apple Silicon hardware | Cross-built and unit tested |
 | End-to-end acceptance against the fixture | Verified under Xvfb | Run on an Intel macOS VM | Partial; X11-only checks are skipped |
-| Physical microphone, OS permission prompts, shortcuts and insertion | Virtual X11 and a fake microphone only | Not yet verified on physical hardware | Not yet verified on physical hardware |
-| Local mode runtime install and dictation | Verified from source | Not yet verified | Unit tests only |
-| Packaged build in Local mode | Not yet verified | Not yet verified | Not yet verified |
+| Physical microphone, OS permission prompts, shortcuts and insertion | Virtual X11 and a fake microphone only | Not yet verified on physical hardware | Insertion and transforms verified into a separate window with a fake microphone; physical microphone, prompts and shortcuts not yet verified |
+| Local mode runtime install and dictation | Verified with the packaged build | Not yet verified | Verified with the packaged build |
+| Packaged build in Local mode | Verified under Xvfb: dictation, insertion, transform, meetings, sync and MCP | Not yet verified | Verified: dictation, insertion, transform, meetings and data deletion |
 | `apple` and `nvidia` Compose stacks | n/a | Merged Compose file validated only | Merged Compose file validated only |
 | Code signing and notarization | n/a | Unsigned | Unsigned |
 
