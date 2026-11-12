@@ -34,6 +34,26 @@ export function isCapturing(phase: RecordingPhase): boolean {
   return phase === 'starting' || phase === 'recording' || phase === 'stopping';
 }
 
+/** How one take ended in the hub. */
+export type TakeOutcome = 'submitted' | 'submitFailed' | 'failed' | 'empty';
+
+/**
+ * The capture phase the hub reports to main when a take ends, or null when main already knows.
+ *
+ * Main records the result of `recording.submit` itself (success and failure). Reporting it again
+ * arrives after main is free for the next take, and would end that take instead.
+ *
+ * Args:
+ *   outcome: How the take ended.
+ * Returns:
+ *   `failed` or `idle` for endings only the hub saw, otherwise null.
+ */
+export function endOfTakeReport(outcome: TakeOutcome): 'failed' | 'idle' | null {
+  if (outcome === 'failed') return 'failed';
+  if (outcome === 'empty') return 'idle';
+  return null;
+}
+
 /**
  * What the pill's Retry does: resubmit the take whose transcription failed, or record a new one.
  *

@@ -68,6 +68,7 @@ import { RELEASE_FEED } from '../shared/releases';
 import { LocalStore, openLocalStore } from './storage/LocalStore';
 import { localAssetType, resolveLocalAsset } from './runtime/LocalAssetResolver';
 import { RecordingCoordinator } from './runtime/RecordingCoordinator';
+import { applyRecordingPhaseReport } from './runtime/RecordingPhaseReport';
 import { TransformCoordinator } from './runtime/TransformCoordinator';
 import { SenderGuard } from './runtime/SenderGuard';
 import { clampOverlayBounds, dockOverlayBounds, dockOverlayWindowBounds, nearestOverlayDockEdge, parseOverlayDockEdge, type OverlayBounds, type OverlayPosition } from './runtime/OverlayGeometry';
@@ -1535,7 +1536,12 @@ class DesktopMainRuntime {
   /** Sends an owned hub capture through the API with cancellation and records only a non-stale result. */
   private async submitRecording(submission: { audio: Uint8Array; durationMs: number; contentType: string; filename: string }, event: IpcMainInvokeEvent): Promise<{ historyEntry: HistoryEntry; capturePhase: 'submitted' | 'failed' }> {
     this.requireHub(event);
-    if (submission.audio.byteLength > MAX_AUDIO_BYTES) throw new Error('Recording is too large.');
+    if (submission.audio.byteLength > MAX_AUDIO_BYTES) {
+      // The hub does not report submit failures again, so main records every one of them.
+      this.recording = { capturePhase: 'failed', error: 'Recording is too large.', startedAt: null, status: 'error' };
+      this.publishState();
+      throw new Error('Recording is too large.');
+    }
     this.recording = { ...this.recording, capturePhase: 'submitting', status: 'processing' };
     const submissionEpoch = this.recordingCancellationEpoch;
     this.publishState();
@@ -1597,24 +1603,9 @@ class DesktopMainRuntime {
   /** Accepts only a legal hub-reported capture phase and reflects it to state subscribers. */
   private async reportPhase(report: { capturePhase: RecordingState['capturePhase']; error?: string }, event: IpcMainInvokeEvent): Promise<RecordingState> {
     this.requireHub(event);
-    // A cancelled renderer may finish reporting after main has returned to idle.
-    if (this.recording.status === 'idle' && ['failed', 'submitted'].includes(report.capturePhase)) return this.recording;
-    const status = report.capturePhase === 'capturing'
-      ? 'recording'
-      : report.capturePhase === 'submitting'
-        ? 'processing'
-        : report.capturePhase === 'failed'
-          ? 'error'
-          : ['idle', 'submitted', 'cancelled'].includes(report.capturePhase)
-            ? 'idle'
-            : this.recording.status;
-    this.recording = {
-      ...this.recording,
-      capturePhase: report.capturePhase,
-      error: report.error ?? (status === 'error' ? 'Recording failed.' : null),
-      startedAt: status === 'idle' || status === 'error' ? null : this.recording.startedAt,
-      status,
-    };
+    const next = applyRecordingPhaseReport(this.recording, report);
+    if (next === this.recording) return this.recording;
+    this.recording = next;
     this.publishState();
     return this.recording;
   }

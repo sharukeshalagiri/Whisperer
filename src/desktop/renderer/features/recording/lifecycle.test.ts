@@ -1,6 +1,18 @@
 import { describe, expect, it } from 'vitest';
 
-import { CaptureGenerationController, isCapturing, retryAction } from './lifecycle';
+import { CaptureGenerationController, endOfTakeReport, isCapturing, retryAction } from './lifecycle';
+
+describe('endOfTakeReport', () => {
+  it('does not repeat a submit result main already recorded, so it cannot end the next take', () => {
+    expect(endOfTakeReport('submitted')).toBeNull();
+    expect(endOfTakeReport('submitFailed')).toBeNull();
+  });
+
+  it('reports endings only the hub saw', () => {
+    expect(endOfTakeReport('failed')).toBe('failed');
+    expect(endOfTakeReport('empty')).toBe('idle');
+  });
+});
 
 describe('CaptureGenerationController', () => {
   it('invalidates pending work after cancellation', () => {

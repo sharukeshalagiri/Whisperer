@@ -15,7 +15,7 @@ import type {
   RecordingSubmissionResult,
 } from '../../../shared/contracts';
 
-import { CaptureGenerationController, retryAction, type RecordingPhase } from './lifecycle';
+import { CaptureGenerationController, endOfTakeReport, retryAction, type RecordingPhase, type TakeOutcome } from './lifecycle';
 import pcmWorkletUrl from './pcm-worklet.js?url&no-inline';
 import { AudioMeterEnvelope } from './meter';
 import { encodePcm16MonoWav, PCM16_BYTES_PER_SAMPLE, WAV_HEADER_BYTES } from './wav';
@@ -185,6 +185,21 @@ export function RecorderProvider({
     updateState({ phase: nextPhase, ...update });
   }, [updateState]);
 
+  /** Ends a take locally right away, telling main only about endings it has not recorded itself. */
+  const finishTake = useCallback((outcome: TakeOutcome, update: Partial<RecorderState>) => {
+    // Synchronous, so a start command that follows main's submit reply is not dropped as "busy".
+    const nextPhase: RecordingPhase = outcome === 'submitted' || outcome === 'empty' ? 'idle' : 'error';
+    phase.current = nextPhase;
+    const capturePhase = endOfTakeReport(outcome);
+    if (capturePhase) {
+      void recordingBridge()?.recording.reportPhase({
+        capturePhase,
+        ...(capturePhase === 'failed' && update.error ? { error: update.error } : {}),
+      }).catch(() => undefined);
+    }
+    updateState({ phase: nextPhase, ...update });
+  }, [updateState]);
+
   const release = useCallback(async (capture: CaptureRuntime): Promise<void> => {
     if (capture.durationTimer !== null) window.clearTimeout(capture.durationTimer);
     capture.durationTimer = null;
@@ -251,11 +266,12 @@ export function RecorderProvider({
     if (!controller.current.isCurrent(capture.generation)) return;
 
     if (!frames.length) {
-      report('idle', { level: 0, elapsedMs: 0, audioBytes: WAV_HEADER_BYTES, message: 'No audio was captured.', error: null });
+      finishTake('empty', { level: 0, elapsedMs: 0, audioBytes: WAV_HEADER_BYTES, message: 'No audio was captured.', error: null });
       return;
     }
 
     let audio: Uint8Array | null = null;
+    let submitFailed = false;
     try {
       report('processing', { level: 0, elapsedMs: durationMs, message: 'Transcribing…', error: null });
       audio = encodePcm16MonoWav(frames, capture.sampleRate);
@@ -263,12 +279,10 @@ export function RecorderProvider({
       if (!controller.current.isCurrent(capture.generation)) return;
       const submit = recordingBridge()?.recording?.submit;
       if (!submit) throw new Error('The desktop recording service is unavailable.');
-      const result = await submit({ audio, durationMs, filename: 'recording.wav', contentType: 'audio/wav' });
+      const result = await submit({ audio, durationMs, filename: 'recording.wav', contentType: 'audio/wav' })
+        .catch((error: unknown) => { submitFailed = true; throw error; });
       if (!controller.current.isCurrent(capture.generation)) return;
-      await recordingBridge()?.recording.reportPhase({ capturePhase: 'submitted' });
-      phase.current = 'idle';
-      updateState({
-        phase: 'idle',
+      finishTake('submitted', {
         level: 0,
         elapsedMs: durationMs,
         audioBytes: audio.byteLength,
@@ -280,13 +294,13 @@ export function RecorderProvider({
       if (controller.current.isCurrent(capture.generation)) {
         // Keep the take, so Retry sends the same audio instead of asking the user to repeat it.
         if (audio && audio.byteLength <= limits.current.maxAudioBytes) failedTake.current = { audio: audio.slice(), durationMs };
-        report('error', { level: 0, message: errorMessage(error), error: errorMessage(error) });
+        finishTake(submitFailed ? 'submitFailed' : 'failed', { level: 0, message: errorMessage(error), error: errorMessage(error) });
       }
     } finally {
       audio?.fill(0);
       frames.length = 0;
     }
-  }, [release, report, updateState]);
+  }, [finishTake, release, report]);
 
   /** Sends the failed take again. On success it is forgotten; on failure it is kept for another try. */
   const resubmitFailedTake = useCallback(async (): Promise<void> => {
@@ -298,16 +312,15 @@ export function RecorderProvider({
       const result = await submit({ audio: take.audio, durationMs: take.durationMs, filename: 'recording.wav', contentType: 'audio/wav' });
       take.audio.fill(0);
       failedTake.current = null;
-      await recordingBridge()?.recording.reportPhase({ capturePhase: 'submitted' });
-      phase.current = 'idle';
-      updateState({
-        phase: 'idle', level: 0, elapsedMs: take.durationMs, audioBytes: take.audio.byteLength, result: result ?? null,
+      finishTake('submitted', {
+        level: 0, elapsedMs: take.durationMs, audioBytes: take.audio.byteLength, result: result ?? null,
         message: result?.historyEntry.pasted ? 'Dictation completed and pasted.' : 'Dictation completed and copied.', error: null,
       });
     } catch (error) {
-      report('error', { level: 0, message: errorMessage(error), error: errorMessage(error) });
+      // Only submit can fail here, and main has already recorded that failure.
+      finishTake('submitFailed', { level: 0, message: errorMessage(error), error: errorMessage(error) });
     }
-  }, [report, updateState]);
+  }, [finishTake, report]);
 
   const startCapture = useCallback(async (options: RecordingStartOptions = {}) => {
     if (phase.current !== 'idle' && phase.current !== 'error') return;
