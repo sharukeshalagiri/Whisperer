@@ -850,3 +850,39 @@ def test_a_healthy_device_database_is_left_alone(tmp_path: Path) -> None:
         connection.execute("CREATE TABLE t (x INTEGER)")
     assert ensure_usable_database(database) is None
     assert database.exists()
+
+
+def test_concurrent_first_requests_after_erase_share_one_device_user(
+    local: tuple[TestClient, Any, Any, LocalConfig],
+) -> None:
+    """The desktop refreshes several lists at once after an erase; none of them may fail.
+
+    Each request recreates the missing device user. Without handling the race, every
+    request but one hit the unique (issuer, subject) constraint and returned 500.
+    """
+    client, _, _, _ = local
+    assert client.get("/v1/me", headers=_auth()).status_code == 200
+    assert client.delete("/v1/local/data", headers=_auth()).status_code == 204
+    paths = [
+        "/v1/dictionary",
+        "/v1/notes",
+        "/v1/meetings",
+        "/v1/transcripts",
+        "/v1/metrics",
+        "/v1/me",
+    ] * 2
+    barrier = threading.Barrier(len(paths))
+    statuses: dict[int, int] = {}
+
+    def fetch(index: int, path: str) -> None:
+        barrier.wait()
+        statuses[index] = client.get(path, headers=_auth()).status_code
+
+    threads = [threading.Thread(target=fetch, args=(i, p)) for i, p in enumerate(paths)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(30)
+    assert [statuses.get(i) for i in range(len(paths))] == [200] * len(paths)
+    users = {client.get("/v1/me", headers=_auth()).json()["user"]["id"] for _ in range(2)}
+    assert len(users) == 1

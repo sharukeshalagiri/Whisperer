@@ -14,6 +14,7 @@ import hmac
 from typing import TYPE_CHECKING
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 
 from whisperer_api.persistence import User
 
@@ -91,11 +92,21 @@ class LocalAuthenticator:
         Returns:
             The single local owner of all resources.
         """
-        user = session.scalar(
-            select(User).where(User.issuer == DEVICE_ISSUER, User.subject == DEVICE_SUBJECT)
-        )
-        if user is None:
-            user = User(issuer=DEVICE_ISSUER, subject=DEVICE_SUBJECT, created_at=self._clock.now())
-            session.add(user)
-            session.flush()
+        query = select(User).where(User.issuer == DEVICE_ISSUER, User.subject == DEVICE_SUBJECT)
+        user = session.scalar(query)
+        if user is not None:
+            return user
+        # Concurrent first requests (the desktop refreshes several lists after an erase) all
+        # find no user. The unique (issuer, subject) key lets one insert win; the rest reuse it.
+        try:
+            with session.begin_nested():
+                user = User(
+                    issuer=DEVICE_ISSUER, subject=DEVICE_SUBJECT, created_at=self._clock.now()
+                )
+                session.add(user)
+        except IntegrityError:
+            existing = session.scalar(query)
+            if existing is None:
+                raise
+            return existing
         return user

@@ -41,6 +41,7 @@ A security, privacy and reliability release from a full audit and end-to-end run
 - A polish failure no longer discards a successful transcription.
 - Retry after a failed transcription sends the same recording again instead of asking you to repeat it.
 - Starting a dictation right after the previous one finished no longer fails with "No recording is active."
+- Right after Delete on-device data, the first lists the app reloads no longer fail with "The server request failed."
 - The server's meeting worker keeps running after an unexpected error.
 - The on-device server is restarted when it stops responding, with a pause between restarts.
 - A damaged local database or settings file no longer stops the app or Local mode from starting. The damaged file is kept next to a fresh one, and settings come back from their last good copy.
