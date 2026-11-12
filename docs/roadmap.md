@@ -101,6 +101,7 @@ The November 2026 audit's critical, high and medium findings are fixed. These lo
 
 ### API
 
+- **A10** When polish fails, the raw transcript is returned, but nothing in the response tells the desktop that polish was skipped, so the user is not told.
 - **A16** With the language model off, a finished meeting still queues a summary, which ends as failed with a generic message.
 - **A22, A23** The configuration guide gives the wrong `DATABASE_URL` default, and its deploy steps include `make api-contract`, which needs a git checkout.
 - **C6** `durationMs` on a segment upload has no upper bound, and there is no per-user storage quota.
@@ -110,6 +111,7 @@ The November 2026 audit's critical, high and medium findings are fixed. These lo
 - **C10 (D14)** The container runs uvicorn with its access log on, which records the OIDC authorization code in `/auth/callback` request lines.
 - **C11** The server does not validate configured inference URLs (scheme, embedded credentials), and the SSRF model is not documented.
 - **C12** `/v1/transcriptions` accepts any `audio/*` type and does not check the bytes.
+- **D1** Two clients still honour a configured proxy for loopback addresses: the `preflight` command and the OIDC client. Neither carries audio or text.
 - **C14, C16** Development dependencies with advisories: js-yaml, undici and @hey-api packages in code generation and build tooling, and pytest 8. None of them ships in the app.
 - **D6** Sync tombstones are never pruned; dictionary tombstones keep the deleted phrase.
 - **D7** The database engine does not hide SQL parameters, so an unexpected database error could log note or transcript text.
