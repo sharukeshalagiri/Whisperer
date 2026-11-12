@@ -34,8 +34,8 @@ jobs:
             pattern: '*.dmg'
     runs-on: ${{ matrix.runner }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22.18.0
           cache: npm
@@ -70,7 +70,7 @@ jobs:
               if (!asset || asset.version !== version) throw new Error('Unexpected installer name: ' + name);
               console.log('ok', name);
             }"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: installers-${{ matrix.runner }}
           path: dist/${{ matrix.pattern }}
@@ -81,14 +81,14 @@ jobs:
     needs: build
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: installers
           merge-multiple: true
       - name: Write checksums
         working-directory: installers
         run: sha256sum -- * > SHA256SUMS && cat SHA256SUMS
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: SHA256SUMS
           path: installers/SHA256SUMS
@@ -101,8 +101,8 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
         with:
           path: installers
           merge-multiple: true
