@@ -112,7 +112,7 @@ The November 2026 audit's critical, high and medium findings are fixed. These lo
 - **C11** The server does not validate configured inference URLs (scheme, embedded credentials), and the SSRF model is not documented.
 - **C12** `/v1/transcriptions` accepts any `audio/*` type and does not check the bytes.
 - **D1** Two clients still honour a configured proxy for loopback addresses: the `preflight` command and the OIDC client. Neither carries audio or text.
-- **C14, C16** Development dependencies with advisories: js-yaml, undici and @hey-api packages in code generation and build tooling, and pytest 8. None of them ships in the app.
+- **C14, C16** Development dependencies with advisories: js-yaml, undici and @hey-api packages in code generation and build tooling. None of them ships in the app. (pytest is now 9.2.)
 - **D6** Sync tombstones are never pruned; dictionary tombstones keep the deleted phrase.
 - **D7** The database engine does not hide SQL parameters, so an unexpected database error could log note or transcript text.
 - **D8** The API reference says dictionary substitutions run after polish; the code runs them before.
@@ -120,6 +120,13 @@ The November 2026 audit's critical, high and medium findings are fixed. These lo
 - **D15** onnxruntime's Windows telemetry events are not explicitly disabled.
 - **D16** The device-setup README mentions custom Hugging Face model ids, which the app does not accept.
 - **E14** Model downloads cannot resume; an interrupted download starts again from zero.
+
+## Dependency updates held back
+
+Dependabot pull requests that were closed rather than merged, and why.
+
+- **npm development group (#2):** TypeScript 7 cannot be installed yet, because typescript-eslint 8.72 supports TypeScript below 6.1 only (`npm ci` fails with ERESOLVE). The same group also held Electron 45, Vite 8, electron-vite 6 and @types/node 26. Each of these major upgrades needs its own migration and an end-to-end run of the packaged app, so they will be done one at a time.
+- **cryptography 50 for Intel macOS (#10):** cryptography 49 and later publish no Intel macOS wheel, and Local mode installs with `--no-build`, so the Intel macOS pin stays at `cryptography<49`. Other platforms already use cryptography 50. Revisit when an Intel macOS wheel is published or Intel Macs are no longer supported.
 
 ## Planned
 
