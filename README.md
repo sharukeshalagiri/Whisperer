@@ -65,6 +65,14 @@ Measured with the released 0.2.0-beta.2 Windows build in Local mode on a 2019 la
 - A 10 minute Local mode session with dictation and a summarized meeting made 0 outbound connections beyond the computer.
 - Known issue: Parakeet sometimes drops passages in long audio. A fix is planned for 0.2.0-beta.3.
 
+### How these numbers were measured
+
+- **Build and hardware:** the released 0.2.0-beta.2 Windows installer, on a 2019 laptop (Intel i5-10210U, 8 GB RAM, CPU only, on AC power), with a fresh temporary profile for each model.
+- **Speed and accuracy:** a one-hour recording built from [LibriSpeech test-clean](https://www.openslr.org/12) (public, with reference transcripts), sent through the app's meeting pipeline the way the app processes recordings. Median of 3 runs per model; word error rate computed with `jiwer`.
+- **Dictation latency:** the packaged app driven automatically with a fake microphone; 10 clips of 9 to 11 seconds, timed from stopping the recording, 0.3 s after the speech ended, until the text appeared in a separate window (median).
+- **Privacy:** every TCP connection opened by the app's processes was recorded during a 10-minute Local mode session (dictation plus a summarized meeting).
+- **Reproducible:** every run checked AC power at its start and end, and runs on battery were discarded and documented. Full method, results and scripts: [docs/benchmarks.md](docs/benchmarks.md) and [tools/benchmark/](tools/benchmark/).
+
 ## Architecture
 
 ```mermaid
