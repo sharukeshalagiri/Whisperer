@@ -7,7 +7,7 @@ Measured performance of the released Whisperer 0.2.0-beta.2 Windows build in Loc
 | | Result | Method |
 | --- | --- | --- |
 | An hour of recorded audio, transcribed on the CPU | **3.03 min** with whisper-base (WER 4.04%), **7.14 min** with Parakeet TDT 0.6B v3 (WER 4.51%) | Meeting pipeline, median of 3 runs each, 60.3 min of LibriSpeech test-clean |
-| Dictation, key release to text in another app | **1.93 s** median with Parakeet (max 5.14 s), **2.59 s** with whisper-base (max 2.69 s) | n=10 utterances of 9 to 11 s per model, polish off |
+| Dictation, stop recording to text in another app | **1.93 s** median with Parakeet (max 5.14 s), **2.59 s** with whisper-base (max 2.69 s) | n=10 utterances of 9 to 11 s per model, polish off |
 | Network | **0 outbound connections beyond this computer** in a 10 minute Local mode session | 5 dictations plus a meeting with transcript and summary, every TCP connection of the app's processes logged |
 | Cold start | Main window ready in **0.87 s**, speech ready in **14.2 s** (Parakeet) or **8.6 s** (whisper-base) | Median of 3 launches each |
 | Tests | **607 unit and integration tests passing**: 238 API, 338 Vitest and 31 node:test. Coverage 88.1% of API statements, 49.0% of desktop lines | Fresh runs on the benchmark machine at commit 1f30669 |
@@ -22,10 +22,23 @@ All of these come from the machine below. A faster CPU will be faster, and nothi
 | Memory | 8 GB (7.8 GB usable) |
 | GPU | Intel UHD and NVIDIA MX250, both unused. Local mode runs ONNX Runtime on the CPU only. |
 | OS | Windows 11 Home 21H2 (10.0.22000), High performance power plan |
-| Power | On AC. Every run checked AC power at its start and end and a run on battery was discarded. |
+| Power | On AC. Every run checked AC power at its start and end. Runs on battery were discarded, see below. |
 | Build | Released `Whisperer-0.2.0-beta.2-win-x64.exe`, checksum verified against the release `SHA256SUMS`, run from a fresh temporary profile per model |
 | Rounding | Times, error rates, sizes and memory are rounded up, so no value is rounded in Whisperer's favor. |
 | Other load | Docker Desktop was stopped. A browser and a database service were still open during some phases, so free memory at the start of each measured phase was 2.4 to 3.4 GB. CPU load averaged 0.9 to 10.6% in the 10 s before each phase, except 20.2% before the Parakeet meeting runs, which started straight after a profile setup. Both are logged with the results. |
+
+### Discarded runs
+
+These runs were stopped or thrown away, and none of their numbers are used on this page. Their data is kept with the raw results outside the repository. Times are UTC.
+
+| When | What | Reason |
+| --- | --- | --- |
+| 2026-11-12 12:36 | First Parakeet run through the dictation path | **Battery.** The laptop was not on AC power when the run started. It was stopped, and AC checks were added to every phase. |
+| 2026-11-12 12:49 to 13:05 | A Parakeet run through the dictation path and a Parakeet meeting run | **Overlapping runs.** A stopped run kept going in the background, so two local servers transcribed at once and one run failed. Both were discarded and the profiles were set up again from scratch. |
+| 2026-11-12 13:41 | Parakeet meeting run 1 | **Critically low memory.** The system stopped the benchmark about 40 s into the run, with the Parakeet server at 1.9 GB and about 1.2 GB free. Its profile was set up again before the meeting runs were repeated. |
+| 2026-11-12 19:26 to 19:45 | Parakeet dictation, clips 1 to 11 | **Locked screen.** Windows reported no foreground window from the first clip on, most likely because the unattended screen had locked, so all 31 attempts failed. The system also stopped the run at 19:45 for critically low memory. Dictation was repeated with an unlocked, unattended screen and a check for a foreground window before it starts. |
+| 2026-11-13 03:45 | Start of the dictation phase | **Battery.** The AC check stopped the run before anything was measured. |
+| 2026-11-13 04:58 | End to end run on the packaged Windows build | **Critically low memory.** Stopped after 7 passing checks and not repeated, see [Tests and coverage](#tests-and-coverage). |
 
 ## Test audio
 

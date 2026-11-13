@@ -61,7 +61,7 @@ The demo above is a real recording of the released 0.2.0-beta.2 Linux build in L
 Measured with the released 0.2.0-beta.2 Windows build in Local mode on a 2019 laptop (Intel i5-10210U, 8 GB, CPU only). Method and full results: [docs/benchmarks.md](docs/benchmarks.md).
 
 - An hour of recorded audio transcribes in 3.03 minutes with whisper-base (4.04% WER) or 7.14 minutes with Parakeet TDT 0.6B v3 (4.51% WER), median of 3 runs on LibriSpeech test-clean.
-- Dictated text appears 1.93 s after you stop speaking with Parakeet (median of 10).
+- Dictated text appears 1.93 s after you stop recording with Parakeet (median of 10).
 - A 10 minute Local mode session with dictation and a summarized meeting made 0 outbound connections beyond the computer.
 - Known issue: Parakeet sometimes drops passages in long audio. A fix is planned for 0.2.0-beta.3.
 
@@ -71,7 +71,7 @@ Measured with the released 0.2.0-beta.2 Windows build in Local mode on a 2019 la
 - **Speed and accuracy:** a one-hour recording built from [LibriSpeech test-clean](https://www.openslr.org/12) (public, with reference transcripts), sent through the app's meeting pipeline the way the app processes recordings. Median of 3 runs per model; word error rate computed with `jiwer`.
 - **Dictation latency:** the packaged app driven automatically with a fake microphone; 10 clips of 9 to 11 seconds, timed from stopping the recording, 0.3 s after the speech ended, until the text appeared in a separate window (median).
 - **Privacy:** every TCP connection opened by the app's processes was recorded during a 10-minute Local mode session (dictation plus a summarized meeting).
-- **Reproducible:** every run checked AC power at its start and end, and runs on battery were discarded and documented. Full method, results and scripts: [docs/benchmarks.md](docs/benchmarks.md) and [tools/benchmark/](tools/benchmark/).
+- **Reproducible:** every run checked AC power at its start and end. Runs on battery, runs stopped for critically low memory and runs with a locked screen were discarded and documented. Full method, results and scripts: [docs/benchmarks.md](docs/benchmarks.md) and [tools/benchmark/](tools/benchmark/).
 
 ## Architecture
 
