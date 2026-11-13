@@ -20,6 +20,7 @@ Everything a person reads about Whisperer that is not code. The user guide tells
 | [Desktop release](desktop-release.md) | Reproducible committed desktop builds, naming, versioning, the update feed and publishing. |
 | [On-device mode design](design/on-device-mode.md) | Intent, the local server contract, inference, runtime installation and failure behavior of Local mode. |
 | [AI services and MCP design](design/ai-services-mcp.md) | Typed meeting AI calls and the authenticated, read-only MCP endpoint. |
+| [Benchmarks](benchmarks.md) | Measured speed, accuracy, latency, memory and network egress of the released Windows build in Local mode. |
 | [Roadmap](roadmap.md) | Platform status, known limitations and planned work. |
 
 ## How it works
@@ -46,6 +47,7 @@ flowchart LR
   Maintainer --> Design[design/]
   Maintainer --> Release[desktop-release.md]
   Maintainer --> Roadmap[roadmap.md]
+  Maintainer --> Benchmarks[benchmarks.md]
   Compose --> API[apps/api]
 ```
 

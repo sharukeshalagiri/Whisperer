@@ -51,3 +51,4 @@ flowchart LR
 | `publish-release.mjs` | Verifies a release output's manifest, names and checksums, then creates tag `v<version>` on the configured GitHub or Gitea release feed and uploads the installers. |
 | `build-macos.sh`, `build-windows.sh` | Thin shell wrappers around `commands.mjs dmg` and `commands.mjs windows`. |
 | `Dockerfile.windows` | Defines the Docker-based Windows packaging toolchain. |
+| [`benchmark/`](benchmark/README.md) | Hand-run performance benchmarks of the released build, behind [docs/benchmarks.md](../docs/benchmarks.md). |

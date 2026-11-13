@@ -130,9 +130,10 @@ Dependabot pull requests that were closed rather than merged, and why.
 
 ## Planned
 
+- **High priority for 0.2.0-beta.3: Parakeet drops passages.** In the [benchmark](benchmarks.md), Parakeet TDT 0.6B v3 left out runs of 11 to 185 words on long audio, which raises its word error rate on the LibriSpeech hour through the dictation path from 1.75% (substitutions and insertions only) to 9.26%, and to 4.51% for a meeting recording. Shorter 30 second windows in `inference.py` halved the dropped words but did not remove them. See the known issue in the benchmark page.
 - Physical-device verification of capture, permissions, shortcuts and insertion on macOS, Windows and Linux X11, and Apple Silicon runs.
 - Local mode installs and packaged-build runs on macOS arm64 and x64, Windows x64 and Linux arm64, with speech timing measurements.
-- A dictation latency benchmark (stop to text) for the packaged build, and an upgrade check from each earlier release on every platform. Neither was measured for 0.2.0-beta.2.
+- An upgrade check from each earlier release on every platform. It was not run for 0.2.0-beta.2. Dictation latency and the other Windows performance numbers are in [benchmarks.md](benchmarks.md); other platforms are not measured yet.
 - Signed and notarized builds, then in-app updates.
 - Wayland insertion through a consented portal or compositor adapter.
 - Server-side splitting of large imported audio files.
