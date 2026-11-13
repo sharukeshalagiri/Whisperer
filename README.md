@@ -56,6 +56,15 @@ The demo above is a real recording of the released 0.2.0-beta.2 Linux build in L
 | <img src="assets/screenshots/desktop-transforms-dark-1080.webp" alt="The Transforms screen with saved transform cards" width="100%"> | <img src="assets/screenshots/desktop-onboarding-inference-dark-1080.webp" alt="The Inference step of onboarding in Local mode" width="100%"> |
 | Transforms | Local mode inference setup |
 
+## Performance
+
+Measured with the released 0.2.0-beta.2 Windows build in Local mode on a 2019 laptop (Intel i5-10210U, 8 GB, CPU only). Method and full results: [docs/benchmarks.md](docs/benchmarks.md).
+
+- An hour of recorded audio transcribes in 3.03 minutes with whisper-base (4.04% WER) or 7.14 minutes with Parakeet TDT 0.6B v3 (4.51% WER), median of 3 runs on LibriSpeech test-clean.
+- Dictated text appears 1.93 s after you stop speaking with Parakeet (median of 10).
+- A 10 minute Local mode session with dictation and a summarized meeting made 0 outbound connections beyond the computer.
+- Known issue: Parakeet sometimes drops passages in long audio. A fix is planned for 0.2.0-beta.3.
+
 ## Architecture
 
 ```mermaid
