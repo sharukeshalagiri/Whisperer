@@ -64,7 +64,7 @@ Speed matches the meeting pipeline. Parakeet's accuracy does not, because of the
 
 ### Known issue: Parakeet drops passages
 
-Parakeet sometimes leaves out a run of consecutive words, from 11 up to 185 words at a time, while the audio around it is transcribed correctly. Long audio is split into windows of at most 60 s for Parakeet and 30 s for whisper-base (`_windows` in `inference.py`).
+Parakeet sometimes leaves out a run of consecutive words ([#18](https://github.com/sharukeshalagiri/Whisperer/issues/18)), from 11 up to 185 words at a time, while the audio around it is transcribed correctly. Long audio is split into windows of at most 60 s for Parakeet and 30 s for whisper-base (`_windows` in `inference.py`).
 
 | Run | WER | Substitutions | Deletions | Insertions | Dropped runs of 10+ words | WER without those runs |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -74,7 +74,7 @@ Parakeet sometimes leaves out a run of consecutive words, from 11 up to 185 word
 
 Counting only substitutions and insertions, Parakeet's word-level error rate on the dictation path is 1.75% (175 of 10,054 words), against 3.82% for whisper-base. Including the isolated deletions but not the dropped runs, it is 2.17%. So when Parakeet transcribes a passage it is more accurate than whisper-base, and the measured 9.26% comes mostly from the dropped passages.
 
-A read-only diagnostic (`window_check.py`) reran the released inference code over the same 4 minute parts and changed only the window length. At 60 s it reproduced the released output exactly, word for word. At 30 s the WER fell to 6.03% and the dropped words fell from 712 to 351, but 10 dropped runs remained. The window length is part of the cause, not all of it. This is tracked as a high priority fix for 0.2.0-beta.3 in the [roadmap](roadmap.md).
+A read-only diagnostic (`window_check.py`) reran the released inference code over the same 4 minute parts and changed only the window length. At 60 s it reproduced the released output exactly, word for word. At 30 s the WER fell to 6.03% and the dropped words fell from 712 to 351, but 10 dropped runs remained. The window length is part of the cause, not all of it. This is tracked as a high priority fix for 0.2.0-beta.3 in [#18](https://github.com/sharukeshalagiri/Whisperer/issues/18) and the [roadmap](roadmap.md).
 
 ## Dictation latency
 
@@ -85,7 +85,7 @@ The packaged app was driven over the Chrome DevTools Protocol with Chromium's fa
 | Parakeet TDT 0.6B v3 | 10 | 1.93 s | 1.81 s | 5.14 s | 1.81, 1.84, 1.85, 1.85, 1.90, 1.97, 1.97, 1.98, 2.02, 5.14 s | 2.57% (9 clips, 234 words) |
 | whisper-base | 10 | 2.59 s | 2.48 s | 2.69 s | 2.48, 2.50, 2.55, 2.58, 2.59, 2.59, 2.61, 2.65, 2.65, 2.69 s | 3.89% (8 clips, 206 words) |
 
-With n=10, the median and the maximum are reported instead of a p95. The 5.14 s Parakeet result was the first clip of its phase, and the cause was not established. One whisper-base attempt on clip 1 timed out with no text after 120 s and the retry succeeded. Every other clip worked on the first attempt. whisper-base is slower than Parakeet here although it is faster on the hour, most likely because it always processes a full 30 s window however short the speech is.
+With n=10, the median and the maximum are reported instead of a p95. The 5.14 s Parakeet result was the first clip of its phase, and the cause was not established ([#20](https://github.com/sharukeshalagiri/Whisperer/issues/20)). One whisper-base attempt on clip 1 timed out with no text after 120 s and the retry succeeded ([#19](https://github.com/sharukeshalagiri/Whisperer/issues/19)). Every other clip worked on the first attempt. whisper-base is slower than Parakeet here although it is faster on the hour, most likely because it always processes a full 30 s window however short the speech is.
 
 The latency of each clip is valid, but for 3 clips the script read the text window's file a second time after the paste and got an empty read, so their text was not stored. Those clips are left out of the WER, and the script now keeps the text from the first read.
 
@@ -137,7 +137,7 @@ Fresh runs on the benchmark machine at commit `1f30669`, the `main` branch when 
 | API, pytest | 238 passed, 0 failed | 88.1% of statements (4,417 statements, 525 missed), coverage.py |
 | Desktop, Vitest | 338 passed in 54 files, 0 failed | 49.0% of lines, 45.2% of statements, 41.6% of branches, 35.3% of functions, `@vitest/coverage-v8` 5.0.4 |
 | Desktop, node:test | 31 passed, 0 failed | not measured |
-| End to end, `tools/drive-desktop.mjs` on Windows | Failed, 2 of 2 runs | The driver stops at its first failure. It failed at the backend switch animation check, where 13 pixels of the ring were still drawn in the final seeked frame. The checks after it did not run. The driver is verified under Xvfb on Linux. |
+| End to end, `tools/drive-desktop.mjs` on Windows | Failed, 2 of 2 runs | The driver stops at its first failure. It failed at the backend switch animation check, where 13 pixels of the ring were still drawn in the final seeked frame. The checks after it did not run. The driver is verified under Xvfb on Linux ([#21](https://github.com/sharukeshalagiri/Whisperer/issues/21)). |
 | End to end on the packaged Windows build | Incomplete | 7 checks passed before the run was stopped because the laptop was critically low on memory: renderer isolation, the OS sandbox, Local mode setup, runtime install, model download, on-device dictation and a dictionary substitution. Insertion, transforms, Notetaker and the rest did not run. It was not restarted. |
 | End to end on Linux | Not run | It runs in Docker, which was kept stopped for these measurements. |
 

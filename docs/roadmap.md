@@ -16,6 +16,15 @@ Whisperer is in beta. This page records what has been verified on which platform
 
 Linux arm64 is in the dependency lock but has not been installed or run.
 
+## Known issues (to do)
+
+Defects measured or observed in the released 0.2.0-beta.2 build, planned for 0.2.0-beta.3. Details and measurements are in [benchmarks.md](benchmarks.md).
+
+- **High:** Parakeet drops passages of 11 to 185 words in long audio, 9.26% WER on the dictation path against 4.51% on the meeting pipeline ([#18](https://github.com/sharukeshalagiri/Whisperer/issues/18)).
+- **Medium:** a whisper-base dictation once returned no text within 120 s, 1 of 11 attempts, and the retry worked ([#19](https://github.com/sharukeshalagiri/Whisperer/issues/19)).
+- **Low:** the first Parakeet dictation of a session took 5.14 s against a 1.93 s median ([#20](https://github.com/sharukeshalagiri/Whisperer/issues/20)).
+- **Low:** `tools/drive-desktop.mjs` fails on Windows at the backend switch animation check ([#21](https://github.com/sharukeshalagiri/Whisperer/issues/21)).
+
 ## Known limitations
 
 ### Desktop
@@ -130,7 +139,7 @@ Dependabot pull requests that were closed rather than merged, and why.
 
 ## Planned
 
-- **High priority for 0.2.0-beta.3: Parakeet drops passages.** In the [benchmark](benchmarks.md), Parakeet TDT 0.6B v3 left out runs of 11 to 185 words on long audio, which raises its word error rate on the LibriSpeech hour through the dictation path from 1.75% (substitutions and insertions only) to 9.26%, and to 4.51% for a meeting recording. Shorter 30 second windows in `inference.py` halved the dropped words but did not remove them. See the known issue in the benchmark page.
+- **High priority for 0.2.0-beta.3: Parakeet drops passages.** In the [benchmark](benchmarks.md), Parakeet TDT 0.6B v3 left out runs of 11 to 185 words on long audio, which raises its word error rate on the LibriSpeech hour through the dictation path from 1.75% (substitutions and insertions only) to 9.26%, and to 4.51% for a meeting recording. Shorter 30 second windows in `inference.py` halved the dropped words but did not remove them. Tracked in [#18](https://github.com/sharukeshalagiri/Whisperer/issues/18).
 - Physical-device verification of capture, permissions, shortcuts and insertion on macOS, Windows and Linux X11, and Apple Silicon runs.
 - Local mode installs and packaged-build runs on macOS arm64 and x64, Windows x64 and Linux arm64, with speech timing measurements.
 - An upgrade check from each earlier release on every platform. It was not run for 0.2.0-beta.2. Dictation latency and the other Windows performance numbers are in [benchmarks.md](benchmarks.md); other platforms are not measured yet.
