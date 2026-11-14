@@ -27,6 +27,7 @@ flowchart LR
 | Entry | Role |
 | --- | --- |
 | `desktop-demo-light-900.gif` | 42 second demo in Local mode: a spoken sentence transcribed on this computer and pasted into a mail window, then shown in History and Insights. |
+| `desktop-demo-dark-1100.gif` | 16 second demo in Local mode, dark theme: a spoken sentence recorded and transcribed on this computer, then shown in History and Insights. |
 | `desktop-dictation-home-dark-1080.webp` | Dictation home in Local mode before the runtime is set up, with an empty history. |
 | `desktop-sign-in-dark-1080.webp` | Sign in screen with the server URL field and `Continue without signing in`. |
 | `desktop-onboarding-permissions-dark-1080.webp` | Permissions step of onboarding. |
