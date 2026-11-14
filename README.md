@@ -18,7 +18,7 @@
 </p>
 
 <p align="center">
-  <img src="assets/screenshots/desktop-demo-light-900.gif" alt="Local mode: a spoken sentence is transcribed on this computer and pasted into a separate mail window, then appears in History and Insights" width="100%">
+  <img src="assets/screenshots/desktop-demo-dark-1100.gif" alt="Local mode: a spoken sentence is recorded and transcribed on this computer, then appears in History and updates Insights" width="100%">
 </p>
 
 Hold a shortcut, speak, and Whisperer types polished text into whatever app has focus. Record a meeting and get a transcript, an editable summary and answers to questions about what was said. Everything runs against a FastAPI server you control, or, with **Continue without signing in**, against the same server running on your own computer with on-device speech recognition.
