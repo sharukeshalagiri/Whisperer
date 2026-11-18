@@ -68,7 +68,7 @@
     "vitest": "5.0.4"
   },
   "dependencies": {
-    "better-sqlite3": "13.0.3",
+    "better-sqlite3": "13.2.0",
     "heat-graph": "0.0.26",
     "react-markdown": "10.1.0",
     "uiohook-napi": "1.5.5",
