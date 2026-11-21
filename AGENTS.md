@@ -32,20 +32,20 @@ These apply to the desktop, the API and the docs alike.
 
 ## Folder documentation
 
-- Every tracked folder has an AGENTS.md and the exact CLAUDE.md shim. Untracked dependencies, caches and build output do not count.
-- AGENTS.md owns the folder's standing rules. It starts with a link to its parent's AGENTS.md, holds only rules specific to that folder, and ends with `## Learnings`. A rule lives in exactly one place, the most specific folder it applies to; a child narrows its parent rather than repeating it.
-- CLAUDE.md is only the three-line shim pointing to the AGENTS.md beside it. Never put rules in it.
-- A README.md is optional. Where one exists, it explains the component with a Mermaid diagram and links the README.md of every child folder that has one. Update the nearest README when a component's ownership, data flow or public exports change.
+- This file holds the rules for the whole repository. A folder gets its own AGENTS.md only when it has rules of its own; folders without one follow the nearest ancestor's.
+- A folder AGENTS.md starts with a link to the nearest ancestor AGENTS.md and holds only rules specific to that folder. A rule lives in exactly one place, the most specific folder it applies to; a child narrows its parent rather than repeating it. Add a `## Learnings` section when there is something learned to record.
+- Every AGENTS.md has the exact three-line CLAUDE.md shim beside it, because Claude Code loads nested CLAUDE.md files only. Never put rules in CLAUDE.md.
+- A README.md is optional. Where one exists, it explains the component with a Mermaid diagram and links the README.md of every child folder that has one. The root README.md is the exception: it is the short product page, and the architecture lives in [docs/README.md](docs/README.md). Update the nearest README when a component's ownership, data flow or public exports change.
 - Change the folder guides together with the code, and run `make docs-check` before committing.
 
 ## Scope owners
 
-- [Applications](apps/AGENTS.md) own the API implementation.
-- [Assets](assets/AGENTS.md) own artwork generation and screenshots.
+- [API](apps/api/AGENTS.md) owns the API implementation.
+- [Brand](assets/brand/AGENTS.md) owns artwork generation and [screenshots](assets/screenshots/AGENTS.md) the product screenshots.
 - [Deploy](deploy/AGENTS.md) owns the Compose inference stacks.
 - [Documentation](docs/AGENTS.md) owns the user guide and developer reference.
 - [Packages](packages/AGENTS.md) own the generated API client.
-- [Desktop source](src/AGENTS.md) owns the Electron app and its runtime boundaries.
+- [Desktop](src/desktop/AGENTS.md) owns the Electron app and its runtime boundaries.
 - [Tools](tools/AGENTS.md) own portable commands, packaging and releases.
 - [Automation](.github/AGENTS.md) owns CI and repository templates.
 
@@ -54,7 +54,3 @@ These apply to the desktop, the API and the docs alike.
 - TypeScript is strict, linted with ESLint at zero warnings and formatted with Prettier. Python passes Ruff and `mypy --strict` and uses Google-style docstrings.
 - Document exported functions and components concisely. Keep components and modules narrow.
 - Never weaken lint rules, skip tests or add unexplained suppressions.
-
-## Learnings
-
-None yet.

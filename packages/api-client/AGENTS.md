@@ -4,6 +4,4 @@ Do not hand edit `src/` or `dist/`. Regenerate both from `apps/api/openapi.json`
 
 Keep the CommonJS output shape because the Electron main process loads `dist` with `require`.
 
-## Learnings
-
-None yet.
+Regeneration rewrites the client files but keeps this guide. `src/core/` stays tracked even though `.gitignore` ignores root-level core dumps.

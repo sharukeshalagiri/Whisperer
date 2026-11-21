@@ -11,7 +11,3 @@ Runtime modules contain focused orchestration that can be tested without Electro
 - Trust a loopback port only after the instance id and the HMAC challenge both match. Stop or signal only the owned child, never a process found by port.
 - Restart automatically a bounded number of times, then surface the failure with a user action.
 - `DataSyncCoordinator` runs one two-way sync at a time: export both sides first, then merge each into the other. It refuses when `ready()` names a blocker and touches neither side.
-
-## Learnings
-
-None yet.

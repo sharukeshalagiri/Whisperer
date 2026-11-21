@@ -6,7 +6,7 @@ Thanks for your interest in improving Whisperer. Bug reports, documentation fixe
 
 - Search existing issues before opening a new one. For anything larger than a small fix, open an issue first so the approach can be agreed before you write code.
 - Report security problems privately as described in [SECURITY.md](SECURITY.md), never in a public issue.
-- Read [AGENTS.md](AGENTS.md) for the project-wide rules and code standards, then the AGENTS.md in each folder you change. The nested guides hold the architecture boundaries and security rules for their folder.
+- Read [AGENTS.md](AGENTS.md) for the project-wide rules and code standards, then the nearest AGENTS.md for each folder you change. Folders with rules of their own, such as the preload bridge, platform adapters and main-process services, keep them in their own guide.
 
 ## Development setup
 
@@ -37,7 +37,7 @@ make api-lint         # Ruff, and mypy --strict for Linux, macOS and Windows
 make api-test         # pytest
 make api-contract     # regenerate openapi.json and the TypeScript client, fail if stale
 make stack-config     # validate every Compose stack
-make docs-check       # every folder has AGENTS.md and the CLAUDE.md shim; READMEs have a diagram and child links
+make docs-check       # folder guides have the CLAUDE.md shim and link their parent; READMEs have a diagram and child links
 ```
 
 Do not weaken lint rules, skip tests or add suppressions to get a green build. If a suppression is truly needed, explain it in a comment on the same line.
@@ -50,7 +50,7 @@ The API is contract first. After changing a route or a wire model, run `make api
 
 - Keep each pull request focused on one change, with tests for new behavior and fixed bugs.
 - Use [Conventional Commits](https://www.conventionalcommits.org/) for commit messages, for example `fix(desktop): keep the pill above full-screen windows`.
-- Update the docs in `docs/` when user-visible behavior or configuration changes, and the folder's AGENTS.md when its rules change. A new folder gets an AGENTS.md that links its parent's, plus the CLAUDE.md shim.
+- Update the docs in `docs/` when user-visible behavior or configuration changes, and the folder's AGENTS.md when its rules change. A folder gets its own AGENTS.md, plus the CLAUDE.md shim, only when it has rules of its own.
 - Never commit secrets, `.env` files, recordings, personal data, installers or build output.
 
 By contributing, you agree that your contributions are licensed under the [MIT License](LICENSE).

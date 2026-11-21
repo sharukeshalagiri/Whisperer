@@ -1,4 +1,4 @@
-Parent instructions: [src AGENTS.md](../AGENTS.md).
+Parent instructions: [root AGENTS.md](../../AGENTS.md).
 
 This is the Electron desktop client. Preserve existing user-visible behavior, layout and flow unless a change is requested, so each targeted change stays small and every diff carries only intent. Prefer an established, documented Electron pattern over a novel one.
 
@@ -42,7 +42,3 @@ IPC rules live with their owners: the contract in [shared](shared/AGENTS.md), th
 
 - `tools/drive-desktop.mjs` drives the real built app against a loopback fixture with a disposable profile. Keep it passing with every change to sign-in, recording, notes or history.
 - React StrictMode mounts effects twice. A mounted-guard ref must be reset to true in its effect setup, not only cleared in cleanup.
-
-## Learnings
-
-None yet.
