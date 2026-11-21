@@ -7,7 +7,3 @@ Parent instructions: [repository root AGENTS.md](../AGENTS.md).
 - Inference services ship no telemetry and keep no request logs: speaches runs with logging off and no access log, and the gateway keeps message logging and telemetry off.
 - Publish no port except the API's. Local inference stays on the private `whisperer-stack` network.
 - Run `make stack-config` after any change here.
-
-## Learnings
-
-None yet.

@@ -39,7 +39,7 @@ flowchart LR
 | Path | Responsibility |
 | --- | --- |
 | `commands.mjs` | Implements the portable `make` targets. |
-| `check-folder-docs.mjs` | Backs `make docs-check`: every tracked folder has `AGENTS.md` and the exact `CLAUDE.md` shim, and every existing `README.md` has a Mermaid diagram and links its child READMEs. |
+| `check-folder-docs.mjs` | Backs `make docs-check`: the root has `AGENTS.md`, every `AGENTS.md` has the exact `CLAUDE.md` shim and links the nearest ancestor guide, and every `README.md` except the root product page has a Mermaid diagram and links its child READMEs. |
 | `after-pack.cjs` | Flips Electron security fuses on every packaged executable. |
 | `generate-api-client.mjs` | Generates and compiles the TypeScript API client from `apps/api/openapi.json`. |
 | `desktop-fixture.mjs` | Serves synthetic loopback API responses for acceptance runs. |

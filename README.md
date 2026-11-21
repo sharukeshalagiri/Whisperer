@@ -28,7 +28,7 @@
 
 ## Engineering
 
-Solo-designed and built end to end: Electron/TypeScript client, FastAPI server, ONNX inference runtime, CI and release pipeline.
+Designed and built solo, with AI coding agents (Claude Code) under my direction: Electron/TypeScript client, FastAPI server, ONNX inference runtime, CI and release pipeline.
 
 - **Hardened IPC.** Sandboxed renderer, `contextIsolation`, strict CSP, Zod-validated bridge in both directions, Electron fuses flipped at pack time ([`protocol.ts`](src/desktop/shared/protocol.ts)).
 - **Supply-chain-pinned inference.** ONNX models locked to commit and SHA-256, staged then atomically promoted, re-hashed before load ([`model_store.py`](apps/api/src/whisperer_api/model_store.py)).

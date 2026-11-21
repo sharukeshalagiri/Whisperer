@@ -1,4 +1,4 @@
-Parent instructions: [apps AGENTS.md](../AGENTS.md).
+Parent instructions: [root AGENTS.md](../../AGENTS.md).
 
 Keep the OpenAPI document and generated client compatible with the desktop. Use `make api-contract` after intentional contract changes.
 
@@ -8,6 +8,4 @@ Browser sign-in first shows an approval page with the code from `sign_in_code`, 
 
 On-device inference dependencies belong in the optional `local` extra. Every locked package in it must have a CPython 3.12 wheel for macOS arm64 and x64, Windows amd64 and Linux x86_64 and aarch64; check `uv.lock` after any change.
 
-## Learnings
-
-None yet.
+Importable packages live under `src/`; tests and generated clients never do.

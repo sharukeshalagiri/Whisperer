@@ -22,7 +22,3 @@ Parent instructions: [features AGENTS.md](../AGENTS.md).
 ## Tests and documentation
 
 - Keep cancellation generation and serialization behavior browser-independent and unit-tested.
-
-## Learnings
-
-None yet.
