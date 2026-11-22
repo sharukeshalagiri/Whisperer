@@ -15,7 +15,3 @@ Parent instructions: [desktop AGENTS.md](../AGENTS.md).
 - Keep the desktop shell device-oriented: no marketing, team or promotional copy.
 - Preserve accessible semantics, visible focus, keyboard operation, light/dark theme support, and reduced-motion behavior.
 - Shell-level motion paints beneath the sidebar and workspace content, ignores the pointer and never covers the page. Measure its geometry from live layout rather than fixed offsets or scales, and keep an old backend's page inert while it leaves.
-
-## Learnings
-
-None yet.

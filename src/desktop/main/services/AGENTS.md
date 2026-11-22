@@ -6,7 +6,3 @@ Parent instructions: [main AGENTS.md](../AGENTS.md).
 - Propagate AbortSignal to the HTTP request. Transient connection failures do not erase a valid session.
 - Route every authorized call by `connectionMode`. Device mode uses only the verified local connection and its boot token; it never refreshes, logs out or clears the remote session. Remote mode never uses the local connection. The only exception is the sync snapshot pair, which names its side explicitly.
 - Inference keys stay OS-encrypted in SettingsService and are reported publicly only as `hasApiKey`.
-
-## Learnings
-
-None yet.

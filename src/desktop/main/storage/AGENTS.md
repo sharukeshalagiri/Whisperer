@@ -9,7 +9,3 @@ This directory owns only local SQLite persistence for the Electron main process.
 - Return JSON-serializable exports without credentials or absolute filesystem paths.
 - Keep models local until a main-runtime adapter maps them to typed shared IPC contracts.
 - Add a Vitest temporary-database test before changing persistence behavior.
-
-## Learnings
-
-None yet.

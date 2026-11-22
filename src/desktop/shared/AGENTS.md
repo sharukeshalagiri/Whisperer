@@ -8,7 +8,3 @@ Parent instructions: [desktop AGENTS.md](../AGENTS.md).
 - Make contract changes additively when possible and update `DesktopApi`, runtime schemas, preload, guides and tests together.
 
 - Keep shortcut actions, platform defaults and normalized collision rules in `shortcuts.ts`; renderer and main must agree on the same vocabulary.
-
-## Learnings
-
-None yet.

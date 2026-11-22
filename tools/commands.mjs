@@ -43,7 +43,7 @@ const descriptions = {
   'macos-zip': 'Build unsigned macOS ZIP archives.',
   'brand-setup': 'Create the optional brand Python environment and install its locked dependencies.',
   brand: 'Regenerate brand source assets using the optional Python environment.',
-  'docs-check': 'Verify AGENTS.md, the CLAUDE.md shim and any README in every tracked folder.',
+  'docs-check': 'Verify the folder guides (AGENTS.md with its CLAUDE.md shim) and any README.',
   'api-setup': 'Install the locked Python API workspace and development tools.',
   'api-test': 'Run the API test suite from its locked workspace.',
   'api-lint': 'Run API formatting and static type checks.',

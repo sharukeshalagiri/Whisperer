@@ -1,4 +1,4 @@
-Parent instructions: [apps/api/src AGENTS.md](../AGENTS.md).
+Parent instructions: [apps/api AGENTS.md](../../AGENTS.md).
 
 Keep HTTP adapters in `main.py`, strict wire models in `schemas.py`, and business operations in their focused modules.
 

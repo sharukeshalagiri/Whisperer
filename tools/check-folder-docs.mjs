@@ -1,13 +1,14 @@
 #!/usr/bin/env node
 /**
- * Fail when a tracked folder lacks its AGENTS.md or exact CLAUDE.md shim, or when an existing
- * README.md lacks its Mermaid diagram or a link to a child folder's README.md.
+ * Check the folder guides and READMEs.
  *
- * The tree comes from the git index, so untracked scratch directories never count. Every folder
- * holding tracked files, and each of its ancestors, needs AGENTS.md and CLAUDE.md. CLAUDE.md is
- * exactly the shim that points Claude Code at AGENTS.md, because Claude loads nested CLAUDE.md
- * files only. A README.md is optional; where one exists it carries a Mermaid diagram and links the
- * README.md of every direct child folder that has one.
+ * The tree comes from the git index, so untracked scratch directories never count. The root needs
+ * AGENTS.md. Any other folder may have one, when it has rules of its own; it must then link the
+ * nearest ancestor's AGENTS.md. AGENTS.md and CLAUDE.md come in pairs, and CLAUDE.md is exactly
+ * the shim that points Claude Code at AGENTS.md, because Claude loads nested CLAUDE.md files only.
+ * A README.md is optional; where one exists it carries a Mermaid diagram and links the README.md
+ * of every direct child folder that has one. The root README.md is the product page and is exempt:
+ * the architecture diagram and the component READMEs are reached from docs/README.md.
  */
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
@@ -44,6 +45,25 @@ function staged(file) {
 }
 
 /**
+ * Relative link from a folder to the nearest ancestor folder that has an AGENTS.md.
+ *
+ * Args:
+ *   folder: Tracked folder path other than the root.
+ *   files: Every tracked file path.
+ * Returns:
+ *   A path such as `../AGENTS.md` or `../../AGENTS.md`.
+ */
+function nearestGuideLink(folder, files) {
+  let up = 1;
+  let parent = path.posix.dirname(folder);
+  while (parent !== '.' && !files.has(within(parent, 'AGENTS.md'))) {
+    parent = path.posix.dirname(parent);
+    up += 1;
+  }
+  return `${'../'.repeat(up)}AGENTS.md`;
+}
+
+/**
  * List every documentation problem for one folder.
  *
  * Args:
@@ -55,16 +75,21 @@ function staged(file) {
  */
 function folderFailures(folder, files, children) {
   const failures = [];
-  for (const name of ['AGENTS.md', 'CLAUDE.md']) {
-    if (!files.has(within(folder, name))) failures.push(`no ${name}`);
-  }
-  if (files.has(within(folder, 'CLAUDE.md')) && staged(within(folder, 'CLAUDE.md')).trim() !== CLAUDE_SHIM) {
+  const hasAgents = files.has(within(folder, 'AGENTS.md'));
+  const hasClaude = files.has(within(folder, 'CLAUDE.md'));
+  if (folder === '.' && !hasAgents) failures.push('no AGENTS.md');
+  if (hasAgents && !hasClaude) failures.push('AGENTS.md without the CLAUDE.md shim');
+  if (hasClaude && !hasAgents) failures.push('CLAUDE.md without an AGENTS.md');
+  if (hasClaude && staged(within(folder, 'CLAUDE.md')).trim() !== CLAUDE_SHIM) {
     failures.push('CLAUDE.md is not exactly the AGENTS.md shim');
   }
-  if (folder !== '.' && files.has(within(folder, 'AGENTS.md')) && !staged(within(folder, 'AGENTS.md')).includes('(../AGENTS.md)')) {
-    failures.push('AGENTS.md does not link its parent AGENTS.md');
+  if (folder !== '.' && hasAgents) {
+    const link = nearestGuideLink(folder, files);
+    if (!staged(within(folder, 'AGENTS.md')).includes(`(${link})`)) {
+      failures.push(`AGENTS.md does not link the nearest ancestor guide (${link})`);
+    }
   }
-  if (!files.has(within(folder, 'README.md'))) return failures;
+  if (folder === '.' || !files.has(within(folder, 'README.md'))) return failures;
   const readme = staged(within(folder, 'README.md'));
   if (!/```mermaid\s*\n[\s\S]+?\n```/.test(readme)) failures.push('README.md has no Mermaid diagram');
   for (const child of children) {
@@ -91,9 +116,9 @@ for (const folder of required) {
 }
 
 if (report.length) {
-  console.error('Every tracked folder needs AGENTS.md and the CLAUDE.md shim; an existing README.md needs a Mermaid diagram and child README links.');
+  console.error('Folder guides: the root needs AGENTS.md, each AGENTS.md needs the CLAUDE.md shim and a link to the nearest ancestor guide; an existing README.md needs a Mermaid diagram and child README links.');
   for (const line of report) console.error(`  ${line}`);
   process.exitCode = 1;
 } else {
-  console.log(`Folder documentation covers ${required.length} folders.`);
+  console.log(`Folder documentation checked in ${required.length} folders.`);
 }

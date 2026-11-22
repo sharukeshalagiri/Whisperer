@@ -8,7 +8,3 @@ Parent instructions: [features AGENTS.md](../AGENTS.md).
 - Notetaker home selection may preview a meeting in its overview pane, but only an explicit `Open note` action enters the full workspace. Keep its two authoritative tabs as Transcript and Summary; flat transcript data never gains invented speakers, and summary Markdown must reject raw HTML, links that navigate, and remote images.
 - Background meeting refreshes and `onMeetingsChanged` invalidations must retain each dirty draft, update the open workspace from full authoritative records, and stop polling after a finite budget with a visible manual recovery action.
 - Meeting questions use only the typed `meetings.ask` bridge. Do not create renderer networking, local model calls, persistent chat history, fabricated answers, or meeting/dictionary/metric writes. Keep the saved-draft warning, in-flight duplicate guard, stale navigation guard, Markdown safety, keyboard behavior, and an explicit error retry.
-
-## Learnings
-
-None yet.
