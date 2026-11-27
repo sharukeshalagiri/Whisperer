@@ -5,7 +5,7 @@
   </picture>
 </p>
 
-<p align="center"><strong>Hold a key, speak, and polished text lands in any app. Private by default, on your machine.</strong></p>
+<p align="center"><strong>Hold a shortcut, speak, and the text is pasted where your cursor is. Local mode transcribes on your computer.</strong></p>
 
 <p align="center">
   <a href="https://github.com/sharukeshalagiri/Whisperer/actions/workflows/ci.yaml"><img src="https://github.com/sharukeshalagiri/Whisperer/actions/workflows/ci.yaml/badge.svg" alt="CI"></a>
@@ -15,14 +15,14 @@
 </p>
 
 <p align="center">
-  <img src="assets/screenshots/desktop-demo-dark-1100.gif" alt="A spoken sentence is transcribed on this computer and pasted into another window" width="100%">
+  <img src="assets/screenshots/desktop-demo-dark-1100.gif" alt="A dictation is recorded in Whisperer and its transcript appears in the dictation history" width="100%">
 </p>
 
 ## Why Whisperer
 
-- **Dictate anywhere.** Hold a shortcut, talk, release. Text is typed into whatever app has focus.
+- **Dictate anywhere.** Hold a shortcut, talk, release. The text is pasted at the cursor of the app you were using, or copied to the clipboard on Wayland.
 - **Never leave a meeting empty-handed.** Record one and get a transcript, an editable summary, and answers to questions about what was said.
-- **Your data stays yours.** Speech recognition runs on-device. No account, no telemetry, no cloud required.
+- **Your data stays yours.** In Local mode, speech is transcribed on this computer with no account. Nothing leaves it unless you point it at an HTTP endpoint. No telemetry.
 - **Fast on modest hardware.** An hour of audio transcribes in about 3 minutes on a 2019 laptop, CPU only ([benchmarks](docs/benchmarks.md)).
 - **Bring your own AI.** Self-host the server and plug in OpenAI, Ollama or any OpenAI-compatible endpoint.
 
