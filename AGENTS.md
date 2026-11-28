@@ -17,6 +17,8 @@ Rules for anyone changing this repository, human or agent. [CONTRIBUTING.md](CON
 | `tools` | `commands.mjs` behind every `make` target, packaging, release and acceptance drivers |
 | `docs` | User guide and developer reference |
 
+Desktop code lives in `src/desktop`, and `src` holds only Whisperer's own source. Each application's deployable code stays under its own folder in `apps`.
+
 ## Product rules
 
 These apply to the desktop, the API and the docs alike.
